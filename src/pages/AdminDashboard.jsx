@@ -33,6 +33,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
 
 export default function AdminDashboard() {
   // Zustand State
@@ -379,10 +380,8 @@ export default function AdminDashboard() {
         <div>
           {/* Logo Section */}
           <div className="px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center">
-                <Heart className="w-4 h-4 text-[#C21C24] fill-[#C21C24]" />
-              </div>
+            <div className="flex items-center gap-3">
+              <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
               <div>
                 <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
                 <p className="text-[#C21C24] text-[10px] font-bold">Center Portal</p>
