@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useBloodStore } from '../store/useBloodStore';
+import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -219,8 +220,8 @@ export default function DonorDashboard() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-[#C21C24] fill-[#C21C24]" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src={bloodlinkLogo} alt="Logo" className="h-full max-w-none object-cover object-left" />
             </div>
             <div>
               <span className="font-bold text-base text-slate-900 tracking-tight">BloodLink</span>

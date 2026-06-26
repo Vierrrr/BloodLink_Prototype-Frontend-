@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useBloodStore } from '../store/useBloodStore';
+import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
@@ -105,8 +106,8 @@ export default function DonorNotification() {
       <header className="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center">
-              <Heart className="w-4 h-4 text-[#C21C24] fill-[#C21C24]" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src={bloodlinkLogo} alt="Logo" className="h-full max-w-none object-cover object-left" />
             </div>
             <div>
               <span className="font-bold text-sm text-slate-900 tracking-tight">BloodLink</span>
@@ -140,8 +141,8 @@ export default function DonorNotification() {
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 text-xs font-semibold text-slate-400">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-slate-50 border border-slate-200 rounded flex items-center justify-center">
-                  <Heart className="w-3.5 h-3.5 text-[#C21C24] fill-[#C21C24]" />
+                <div className="w-6 h-6 rounded flex items-center justify-center overflow-hidden">
+                  <img src={bloodlinkLogo} alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-slate-800">BloodLink DVO Alert</span>
               </div>

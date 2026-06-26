@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useBloodStore } from '../store/useBloodStore';
+import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
 import { 
   Heart, 
   Check, 
@@ -38,8 +39,8 @@ export default function DonorConfirm() {
       <header className="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center">
-              <Heart className="w-4 h-4 text-[#C21C24] fill-[#C21C24]" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src={bloodlinkLogo} alt="Logo" className="h-full max-w-none object-cover object-left" />
             </div>
             <div>
               <span className="font-bold text-sm text-slate-900 tracking-tight">BloodLink</span>

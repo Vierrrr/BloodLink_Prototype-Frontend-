@@ -30,7 +30,8 @@ import {
   UserCheck,
   CheckCircle2,
   Lock,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -40,12 +41,23 @@ export default function AdminDashboard() {
   const donors = useBloodStore((state) => state.donors);
   const inventory = useBloodStore((state) => state.inventory);
   const bloodRequests = useBloodStore((state) => state.bloodRequests);
+  const hospitals = useBloodStore((state) => state.hospitals);
+  const users = useBloodStore((state) => state.users);
+  const forecastData = useBloodStore((state) => state.forecastData);
   const smsLogs = useBloodStore((state) => state.smsLogs);
+  const distributionLog = useBloodStore((state) => state.distributionLog);
   const accountFlagged = useBloodStore((state) => state.accountFlagged);
   const arrivedAtFacility = useBloodStore((state) => state.arrivedAtFacility);
   const updateBloodRequestStatus = useBloodStore((state) => state.updateBloodRequestStatus);
   const updateInventoryUnits = useBloodStore((state) => state.updateInventoryUnits);
   const setFlaggedStatus = useBloodStore((state) => state.setFlaggedStatus);
+  const addHospital = useBloodStore((state) => state.addHospital);
+  const updateHospital = useBloodStore((state) => state.updateHospital);
+  const deleteHospital = useBloodStore((state) => state.deleteHospital);
+  const getEquityAllocations = useBloodStore((state) => state.getEquityAllocations);
+  const recordDistribution = useBloodStore((state) => state.recordDistribution);
+  const getLastDistributionByBloodType = useBloodStore((state) => state.getLastDistributionByBloodType);
+  const generateNextWeeks = useBloodStore((state) => state.generateNextWeeks);
 
   // Mobilization Simulation Hooks
   const mobilizeFlowStep = useBloodStore((state) => state.mobilizeFlowStep);
@@ -67,6 +79,15 @@ export default function AdminDashboard() {
 
   // Local UI State
   const [tab, setTab] = useState('dashboard');
+  const [selectedDonor, setSelectedDonor] = useState(null);
+  // Hospital CRUD state
+  const [showHospitalModal, setShowHospitalModal] = useState(false);
+  const [editingHospital, setEditingHospital] = useState(null);
+  const [hospitalForm, setHospitalForm] = useState({ name: '', type: 'Government', contact: '', phone: '', email: '', address: '' });
+  // Distribution history filter
+  const [distHospitalFilter, setDistHospitalFilter] = useState('ALL');
+  const [emergencyBloodType, setEmergencyBloodType] = useState(null);
+  const [selectedInventoryType, setSelectedInventoryType] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRequestNote, setSelectedRequestNote] = useState('');
   const [selectedRequestRef, setSelectedRequestRef] = useState('');
@@ -74,6 +95,17 @@ export default function AdminDashboard() {
   const [reEligibilityScanning, setReEligibilityScanning] = useState(false);
   const [reEligibilityComplete, setReEligibilityComplete] = useState(false);
   const [reEligibilityCount, setReEligibilityCount] = useState(0);
+
+  // Distribution History detail modal
+  const [selectedDistLog, setSelectedDistLog] = useState(null);
+  const [showDistLogModal, setShowDistLogModal] = useState(false);
+
+  // Allocate confirmation modal
+  const [allocateTarget, setAllocateTarget] = useState(null); // { hospitalId, hospitalName, bloodType, units }
+  const [showAllocateModal, setShowAllocateModal] = useState(false);
+
+  // SMS Recall confirmation modal
+  const [showSmsConfirmModal, setShowSmsConfirmModal] = useState(false);
 
   // Map References
   const mobMapRef = useRef(null);
@@ -88,26 +120,32 @@ export default function AdminDashboard() {
 
   const tabTitles = {
     dashboard: 'Dashboard Overview',
-    inventory: 'Blood Inventory Management',
-    mobilize: 'Donor Mobilization Control',
-    reeligibility: 'Re-Eligibility Database Scan',
-    turnout: 'Donor Turnout Log',
-    donormap: 'Geographic Donor Density Map',
-    donors: 'Davao City Donor Registry',
-    smslog: 'Semaphore SMS Transaction Log',
-    bloodrequests: 'Hospital Blood Release Pre-Submissions'
+    users: 'User Management',
+    donors: 'Donor Management',
+    inventory: 'Blood Inventory',
+    issuance: 'Blood Issuance',
+    hospitals: 'Hospital Management',
+    forecasting: 'Demand Forecasting',
+    distribution: 'Distribution Recommendation',
+    recall: 'Donor Recall',
+    reports: 'Reports Module',
+    hospital_history: 'Distribution History',
+    dist_record_detail: 'Distribution Record Detail'
   };
 
   const tabSubs = {
-    dashboard: 'Real-time blood stock metrics and simulation shortcuts',
-    inventory: 'Monitor blood bag levels and adjust safety thresholds',
-    mobilize: 'Trigger matching algorithm and geographic expansion dispatches',
-    reeligibility: 'Identify donors who completed their 90-day rest interval',
-    turnout: 'Monitor registered donor arrivals at SPMC Blood Bank',
-    donormap: 'Inspect geographical clusters of donors across Davao City',
-    donors: 'Manage donor profiles, validation, and privacy permissions',
-    smslog: 'SMS gateway tracking and delivery statistics',
-    bloodrequests: 'Inspect attesting physician signatures and process releases'
+    dashboard: 'Real-time metrics and system overview',
+    users: 'Manage system users and access privileges',
+    donors: 'Manage donor records and donation history',
+    inventory: 'Monitors available blood stocks and components',
+    issuance: 'Records blood distribution transactions to hospitals',
+    hospitals: 'Maintains partner hospital information',
+    forecasting: 'Predicts future blood demand using Regression-Enhanced Forecasting',
+    distribution: 'Equity-based blood allocation to partner hospitals',
+    recall: 'Automates donor recall after the required eligibility period',
+    reports: 'Generates operational reports',
+    hospital_history: 'Searchable log of all blood distributions per hospital',
+    dist_record_detail: 'Full breakdown of a single distribution transaction'
   };
 
   // Timeline Response Graph Data (Recharts)
@@ -289,8 +327,8 @@ export default function AdminDashboard() {
       }).addTo(map);
 
       const banks = [
-        { name: 'SPMC Blood Services', coords: [7.0731, 125.6128], color: '#C21C24' },
-        { name: 'Philippine Red Cross', coords: [7.0601, 125.6105], color: '#E11D48' },
+        { name: 'SPMC Blood Services (Blood hospital partnered with SNBC)', coords: [7.0731, 125.6128], color: '#C21C24' },
+        { name: 'Philippine Red Cross (Other bloodbank)', coords: [7.0601, 125.6105], color: '#E11D48' },
         { name: 'SNBC Mindanao Compound', coords: [7.0755, 125.6140], color: '#2563EB' }
       ];
 
@@ -372,6 +410,19 @@ export default function AdminDashboard() {
     setShowNoteModal(false);
   };
 
+  // Open distribution log detail — navigate like blood inventory (inline page)
+  const openDistLog = (log) => {
+    setSelectedDistLog(log);
+    setTab('dist_record_detail');
+  };
+
+  // Emergency Retrack: navigate to Distribution History tab & highlight that blood type
+  const handleEmergencyRetrack = (bloodType) => {
+    setEmergencyBloodType(bloodType);
+    setDistHospitalFilter('ALL');
+    setTab('hospital_history');
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       
@@ -397,14 +448,26 @@ export default function AdminDashboard() {
           </div>
 
           {/* Sidebar Nav Links */}
-          <nav className="flex-1 py-2">
+          <nav className="flex-1 py-2 overflow-y-auto">
             <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">General</p>
             
             <button onClick={() => setTab('dashboard')} className={`w-full text-left nav-link ${tab === 'dashboard' ? 'active' : ''}`}>
               <Database className="nav-icon" />
               <span>Dashboard</span>
             </button>
+
+            <button onClick={() => setTab('users')} className={`w-full text-left nav-link ${tab === 'users' ? 'active' : ''}`}>
+              <UserCheck className="nav-icon" />
+              <span>User Management</span>
+            </button>
+
+            <button onClick={() => setTab('donors')} className={`w-full text-left nav-link ${tab === 'donors' ? 'active' : ''}`}>
+              <Users className="nav-icon" />
+              <span>Donor Management</span>
+            </button>
             
+            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Inventory & Issuance</p>
+
             <button onClick={() => setTab('inventory')} className={`w-full text-left nav-link ${tab === 'inventory' ? 'active' : ''}`}>
               <Heart className="nav-icon" />
               <span>Blood Inventory</span>
@@ -415,52 +478,50 @@ export default function AdminDashboard() {
               )}
             </button>
 
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Operations</p>
-            
-            <button onClick={() => setTab('mobilize')} className={`w-full text-left nav-link ${tab === 'mobilize' ? 'active' : ''}`}>
-              <Activity className="nav-icon" />
-              <span>Mobilization</span>
-              {mobilizeFlowStep > 0 && mobilizeFlowStep < 4 && (
-                <span className="ml-auto w-1.5 h-1.5 bg-[#C21C24] rounded-full"></span>
-              )}
-            </button>
-            
-            <button onClick={() => setTab('reeligibility')} className={`w-full text-left nav-link ${tab === 'reeligibility' ? 'active' : ''}`}>
-              <RefreshCw className="nav-icon" />
-              <span>Re-Eligibility Scan</span>
-            </button>
-            
-            <button onClick={() => setTab('turnout')} className={`w-full text-left nav-link ${tab === 'turnout' ? 'active' : ''}`}>
-              <ClipboardList className="nav-icon" />
-              <span>Donor Turnout</span>
-            </button>
-
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Records</p>
-            
-            <button onClick={() => { setTab('donormap'); setTimeout(()=>initDonorMap(), 100); }} className={`w-full text-left nav-link ${tab === 'donormap' ? 'active' : ''}`}>
-              <Map className="nav-icon" />
-              <span>Density Map</span>
-            </button>
-            
-            <button onClick={() => setTab('donors')} className={`w-full text-left nav-link ${tab === 'donors' ? 'active' : ''}`}>
-              <Users className="nav-icon" />
-              <span>Donor Registry</span>
-            </button>
-            
-            <button onClick={() => setTab('smslog')} className={`w-full text-left nav-link ${tab === 'smslog' ? 'active' : ''}`}>
-              <MessageSquare className="nav-icon" />
-              <span>SMS Gateway</span>
-            </button>
-            
-            <button onClick={() => setTab('bloodrequests')} className={`w-full text-left nav-link ${tab === 'bloodrequests' ? 'active' : ''}`}>
+            <button onClick={() => setTab('issuance')} className={`w-full text-left nav-link ${tab === 'issuance' ? 'active' : ''}`}>
               <FileText className="nav-icon" />
-              <span>Release Referrals</span>
+              <span>Blood Issuance</span>
               {pendingRequests > 0 && (
                 <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                   {pendingRequests}
                 </span>
               )}
             </button>
+
+            <button onClick={() => setTab('hospitals')} className={`w-full text-left nav-link ${tab === 'hospitals' ? 'active' : ''}`}>
+              <Building2 className="nav-icon" />
+              <span>Hospital Management</span>
+            </button>
+
+            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Capstone Elements</p>
+
+            <button onClick={() => setTab('forecasting')} className={`w-full text-left nav-link ${tab === 'forecasting' ? 'active' : ''}`}>
+              <Activity className="nav-icon" />
+              <span>Demand Forecasting</span>
+            </button>
+
+            <button onClick={() => setTab('distribution')} className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}>
+              <Map className="nav-icon" />
+              <span>Distribution Recs</span>
+            </button>
+
+            <button onClick={() => setTab('hospital_history')} className={`w-full text-left nav-link ${tab === 'hospital_history' ? 'active' : ''}`}>
+              <ClipboardList className="nav-icon" />
+              <span>Distribution History</span>
+            </button>
+
+            <button onClick={() => setTab('recall')} className={`w-full text-left nav-link ${tab === 'recall' ? 'active' : ''}`}>
+              <RefreshCw className="nav-icon" />
+              <span>Donor Recall</span>
+            </button>
+
+            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Analytics</p>
+
+            <button onClick={() => setTab('reports')} className={`w-full text-left nav-link ${tab === 'reports' ? 'active' : ''}`}>
+              <ClipboardList className="nav-icon" />
+              <span>Reports</span>
+            </button>
+
           </nav>
         </div>
 
@@ -494,7 +555,13 @@ export default function AdminDashboard() {
               </button>
             )}
             <div className="h-8 w-px bg-slate-200"></div>
-            <Link to="/" className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors">Logout</Link>
+            <Link
+              to="/"
+              title="Logout"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-[#C21C24] hover:bg-rose-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </Link>
           </div>
         </header>
 
@@ -563,26 +630,7 @@ export default function AdminDashboard() {
 
                 {/* Right Side Info Cards */}
                 <div className="space-y-4">
-                  {criticalCount > 0 && (
-                    <div className="bg-white border-2 border-rose-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5 text-[#C21C24] font-bold text-xs uppercase tracking-wider mb-2">
-                          <AlertTriangle className="w-4.5 h-4.5" />
-                          <span>Shortage Identified</span>
-                        </div>
-                        <p className="text-slate-800 font-bold text-sm tracking-tight">O- Negative Supply Deficit</p>
-                        <p className="text-slate-500 text-xs mt-1 leading-relaxed">
-                          3 units remaining in local storage (safety minimum: 5). Dispatch alerts recommended.
-                        </p>
-                      </div>
-                      <button 
-                        onClick={() => { setTab('mobilize'); if (mobilizeFlowStep === 0) triggerMobilization('O-'); }} 
-                        className="w-full mt-5 bg-[#C21C24] text-white py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all shadow-sm"
-                      >
-                        Initiate Matching Protocol
-                      </button>
-                    </div>
-                  )}
+                  {/* Intentionally removed matching protocol button */}
 
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <h4 className="font-bold text-slate-900 text-xs mb-1 uppercase tracking-wider">Interval Scan Query</h4>
@@ -622,7 +670,11 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
                   {inventory.map((blood) => (
-                    <tr key={blood.type} className={`hover:bg-slate-50/30 transition-colors ${blood.status === 'critical' ? 'bg-rose-50/20' : ''}`}>
+                    <tr 
+                      key={blood.type} 
+                      onClick={() => { setSelectedInventoryType(blood.type); setTab('blood_records'); }}
+                      className={`hover:bg-slate-50/30 transition-colors cursor-pointer ${blood.status === 'critical' ? 'bg-rose-50/20' : ''}`}
+                    >
                       <td className="px-6 py-4"><span className="text-base font-black text-slate-900 font-mono">{blood.type}</span></td>
                       <td className="px-6 py-4">
                         <span className={`text-base font-bold font-mono ${
@@ -650,16 +702,9 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {(blood.status === 'critical' || blood.status === 'low') ? (
-                          <button 
-                            onClick={() => { setTab('mobilize'); triggerMobilization(blood.type); }} 
-                            className="bg-[#C21C24] text-white text-[10px] px-3 py-1.5 rounded font-bold hover:bg-[#A8181F] transition-all shadow-sm"
-                          >
-                            Mobilize
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 font-medium flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Stable</span>
-                        )}
+                        <span className="text-slate-400 font-medium flex items-center gap-1 text-[10px]">
+                          View Donors <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -668,376 +713,102 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: DONOR MOBILIZATION CONTROL FLOW */}
-          {tab === 'mobilize' && (
-            <div className="fade-in space-y-6">
-              
-              {/* Process indicator steps */}
-              <div className="bg-white border border-slate-200 rounded-xl px-6 py-4 flex items-center gap-4 overflow-x-auto shadow-sm">
-                {['Algorithmic Filter Match', 'Semaphore SMS Gateway Dispatch', 'Dynamic Proximity Mapping', 'Consolidated Summary'].map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 flex-shrink-0 text-xs font-semibold">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      mobilizeFlowStep > i ? 'bg-emerald-500 text-white' : mobilizeFlowStep === i + 1 ? 'bg-[#C21C24] text-white' : 'bg-slate-100 text-slate-450 border border-slate-200'
-                    }`}>
-                      {mobilizeFlowStep > i ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-                    </div>
-                    <span className={
-                      mobilizeFlowStep === i + 1 ? 'text-[#C21C24] font-bold' : mobilizeFlowStep > i ? 'text-emerald-600' : 'text-slate-400'
-                    }>{s}</span>
-                    {i < 3 && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
-                  </div>
-                ))}
+          {/* TAB: BLOOD RECORDS (Specific Blood Type) */}
+          {tab === 'blood_records' && selectedInventoryType && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-sm tracking-tight">Donors with Blood Type {selectedInventoryType}</h3>
+                <button onClick={() => setTab('inventory')} className="text-xs text-blue-600 hover:underline">Back to Inventory</button>
               </div>
-
-              {/* STEP 0: IDLE STATE */}
-              {mobilizeFlowStep === 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm max-w-2xl mx-auto">
-                  <div className="w-14 h-14 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 text-[#C21C24]">
-                    <AlertTriangle className="w-7 h-7" />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-2">Automated Shortage Matching</h2>
-                  <p className="text-slate-500 text-xs mb-6 max-w-md mx-auto leading-relaxed">
-                    SPMC O- Blood stock is currently below safety thresholds. Run the search sequence to locate qualified proximity-mapped donors in Davao.
-                  </p>
-                  <button 
-                    onClick={() => triggerMobilization('O-')}
-                    className="bg-[#C21C24] text-white px-8 py-3 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all shadow-sm flex items-center justify-center gap-1.5 mx-auto"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Run Match & Dispatch sequence</span>
-                  </button>
-                </div>
-              )}
-
-              {/* STEP 1: ALGORITHMIC SCANNING */}
-              {mobilizeFlowStep === 1 && (
-                <div className="space-y-6 max-w-3xl mx-auto">
-                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Algorithmic Match Engine</span>
-                      <h2 className="text-base font-bold text-slate-900 mt-1">Filtering Active Database Profiles</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Processing whole-blood interval requirements sequentially</p>
-                    </div>
-                    <div className="text-center bg-slate-50 border border-slate-250/60 rounded-xl px-6 py-3 flex-shrink-0">
-                      <p className="text-3xl font-extrabold text-slate-800 font-mono">{matchedCount}</p>
-                      <p className="text-slate-450 text-[10px] font-bold uppercase tracking-wider mt-0.5">Matched Donors</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                    <div className="flex justify-between text-xs font-bold text-slate-650 mb-2">
-                      <span>Analyzing registry profiles...</span>
-                      <span className="font-mono">{scannedCount} / 1,247 scanned</span>
-                    </div>
-                    <div className="w-full bg-slate-150 rounded-full h-3 overflow-hidden mb-6">
-                      <div 
-                        className="h-3 rounded-full bg-[#C21C24] transition-all duration-100"
-                        style={{ width: `${scanProgress}%` }}
-                      ></div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 text-xs font-semibold">
-                      <div className={`rounded-xl border p-4 flex flex-col justify-between ${criteriaChecked >= 1 ? 'border-emerald-250 bg-emerald-50/20 text-emerald-800' : 'border-slate-200 text-slate-500'}`}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span>1. Compatibility Filter</span>
-                          {criteriaChecked >= 1 && <CheckCircle className="w-4.5 h-4.5 text-emerald-600" />}
-                        </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed font-normal">Checks ABO matching tiers.</p>
-                      </div>
-                      
-                      <div className={`rounded-xl border p-4 flex flex-col justify-between ${criteriaChecked >= 2 ? 'border-emerald-250 bg-emerald-50/20 text-emerald-800' : 'border-slate-200 text-slate-500'}`}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span>2. Interval Validation</span>
-                          {criteriaChecked >= 2 && <CheckCircle className="w-4.5 h-4.5 text-emerald-600" />}
-                        </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed font-normal">Checks 90-day safe intervals.</p>
-                      </div>
-
-                      <div className={`rounded-xl border p-4 flex flex-col justify-between ${criteriaChecked >= 3 ? 'border-emerald-250 bg-emerald-50/20 text-emerald-800' : 'border-slate-200 text-slate-500'}`}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span>3. Verification Clearance</span>
-                          {criteriaChecked >= 3 && <CheckCircle className="w-4.5 h-4.5 text-emerald-600" />}
-                        </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed font-normal">Verifies block/flag holds.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: DISPATCHED / SMS PREVIEW */}
-              {mobilizeFlowStep === 2 && (
-                <div className="space-y-6">
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 flex items-center justify-between text-emerald-800 font-bold text-xs shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 text-white">
-                        <CheckCircle className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold tracking-tight">Semaphore Broadcast Dispatched</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5 font-normal">Identified 47 matched O- donors. SMS sequences sent successfully.</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setMobilizeFlowStep(3)}
-                      className="bg-emerald-600 text-white font-bold text-xs py-2 px-4 rounded hover:bg-emerald-700 transition-all"
-                    >
-                      Verify Turnout Maps
-                    </button>
-                  </div>
-
-                  <div className="grid lg:grid-cols-2 gap-6">
-                    {/* Matched list */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm overflow-hidden flex flex-col max-h-[500px]">
-                      <h4 className="font-bold text-slate-900 text-xs mb-4 uppercase tracking-wider">Matched Proximity Pool</h4>
-                      <div className="divide-y divide-slate-100 overflow-y-auto flex-grow text-xs text-slate-650">
-                        {matchedDonors.map((d, i) => (
-                          <div key={i} className="py-3 flex items-center justify-between">
-                            <div>
-                              <p className="font-bold text-slate-800">{d.name}</p>
-                              <p className="text-[10px] text-slate-450 font-mono mt-0.5">{d.phone}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-slate-800 font-mono">{d.distance}</p>
-                              <span className="text-[9px] text-emerald-600 font-bold">Alert Sent</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* SMS Preview Logs */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm overflow-hidden flex flex-col max-h-[500px]">
-                      <h4 className="font-bold text-slate-900 text-xs mb-1 uppercase tracking-wider">SMS Gateway Feed</h4>
-                      <p className="text-[10px] text-slate-400 mb-4 font-semibold">Live Semaphore PH dispatch response logs</p>
-                      <div className="divide-y divide-slate-100 overflow-y-auto flex-grow space-y-3.5">
-                        {smsLogs.slice(0, 10).map((log, i) => (
-                          <div key={i} className="pt-3 sms-in text-xs">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: log.color }}>
-                                  {log.initials}
-                                </div>
-                                <div>
-                                  <p className="font-bold text-slate-905">{log.name}</p>
-                                  <p className="text-[9px] text-slate-400 font-mono">{log.phone}</p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5">{log.status}</span>
-                            </div>
-                            <p className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 font-mono text-[10px] text-slate-600 leading-relaxed">{log.msg}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: RESPONSE TRACKING (MAP) */}
-              {mobilizeFlowStep === 3 && (
-                <div className="space-y-6 fade-in">
-                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dynamic Response Routing</span>
-                      <h3 className="text-base font-bold text-slate-900 mt-1">Geographic Turnout Progress</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Tracking live donor responses and estimated arrivals</p>
-                    </div>
-                    <div className="text-center bg-slate-50 border border-slate-250/60 rounded-xl px-6 py-2.5 flex-shrink-0">
-                      <p className="text-3xl font-extrabold text-slate-800 font-mono">{totalConfirmed}</p>
-                      <p className="text-slate-450 text-[10px] font-bold uppercase tracking-wider mt-0.5">Confirmed Turnouts</p>
-                    </div>
-                  </div>
-
-                  <div className="grid lg:grid-cols-3 gap-6">
-                    {/* MAP PANEL */}
-                    <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
-                        <span>Davao City Response Grid</span>
-                        <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#C21C24] rounded-full"></span>SPMC target</span>
-                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>Volunteers</span>
-                        </div>
-                      </div>
-                      <div ref={mobMapRef} id="portalMap"></div>
-                      <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-                        <button 
-                          onClick={() => setMobilizeFlowStep(4)}
-                          className="bg-[#C21C24] text-white px-6 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all shadow-sm"
-                        >
-                          Access Turnout Ledger →
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* PHASES PANEL */}
-                    <div className="space-y-4">
-                      <div className={`p-5 rounded-xl border bg-white shadow-sm flex flex-col justify-between ${currentPhase === 1 ? 'border-blue-300 ring-2 ring-blue-50 bg-blue-50/10' : 'border-slate-200/80 opacity-60'}`}>
-                        <div>
-                          <div className="flex justify-between items-center mb-2.5">
-                            <h5 className="font-bold text-xs text-slate-900">Phase 1: Local Zone (0-2 km)</h5>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100 text-blue-700">
-                              {currentPhase === 1 ? 'ACTIVE' : 'COMPLETE'}
-                            </span>
-                          </div>
-                          <div className="text-xs space-y-1 text-slate-500">
-                            <p>Threshold Radius: <strong>2.0 km</strong></p>
-                            <p>Blood Target: <strong className="text-[#C21C24]">O- Only</strong></p>
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-3 border-t border-slate-100/60 flex justify-between items-center">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Phase 1 Turnout</span>
-                          <span className="font-bold text-slate-800 text-sm">{currentPhase === 1 ? totalConfirmed : 12} confirmed</span>
-                        </div>
-                      </div>
-
-                      <div className={`p-5 rounded-xl border bg-white shadow-sm flex flex-col justify-between ${currentPhase === 2 ? 'border-amber-300 ring-2 ring-amber-50 bg-amber-50/10' : 'border-slate-200/80 opacity-60'}`}>
-                        <div>
-                          <div className="flex justify-between items-center mb-2.5">
-                            <h5 className="font-bold text-xs text-slate-900">Phase 2: City Perimeter (2-10 km)</h5>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${currentPhase === 2 ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-slate-50 border-slate-150 text-slate-400'}`}>
-                              {currentPhase === 2 ? 'ACTIVE' : currentPhase > 2 ? 'COMPLETE' : 'STANDBY'}
-                            </span>
-                          </div>
-                          <div className="text-xs space-y-1 text-slate-500">
-                            <p>Threshold Radius: <strong>10.0 km</strong></p>
-                            <p>Blood Target: <strong className="text-[#C21C24]">O- Only</strong></p>
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-3 border-t border-slate-100/60 flex justify-between items-center">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Phase 2 Turnout</span>
-                          <span className="font-bold text-slate-800 text-sm">{currentPhase === 2 ? totalConfirmed : currentPhase > 2 ? 20 : '—'} confirmed</span>
-                        </div>
-                      </div>
-
-                      <div className={`p-5 rounded-xl border bg-white shadow-sm flex flex-col justify-between ${currentPhase === 3 ? 'border-purple-300 ring-2 ring-purple-50 bg-purple-50/10' : 'border-slate-200/80 opacity-60'}`}>
-                        <div>
-                          <div className="flex justify-between items-center mb-2.5">
-                            <h5 className="font-bold text-xs text-slate-900">Phase 3: Compatible Types</h5>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${currentPhase === 3 ? 'bg-purple-50 border-purple-100 text-purple-750' : 'bg-slate-50 border-slate-150 text-slate-400'}`}>
-                              {currentPhase === 3 ? 'ACTIVE' : 'STANDBY'}
-                            </span>
-                          </div>
-                          <div className="text-xs space-y-1 text-slate-500">
-                            <p>Threshold Radius: <strong>Region-wide</strong></p>
-                            <p>Blood Target: <strong className="text-indigo-650">A-, B-, AB- compatible</strong></p>
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-3 border-t border-slate-100/60 flex justify-between items-center">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Phase 3 Turnout</span>
-                          <span className="font-bold text-slate-800 text-sm">{currentPhase === 3 ? totalConfirmed : '—'} confirmed</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: RESOLVED SUMMARY */}
-              {mobilizeFlowStep === 4 && (
-                <div className="space-y-6 max-w-4xl mx-auto fade-in">
-                  <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
-                    <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
-                      <CheckCircle className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-1 tracking-tight">Shortage Resolved</h3>
-                    <p className="text-xs text-slate-500 mb-6">{totalConfirmed} voluntary donors confirmed arrivals to SPMC. Supply margins are secured.</p>
-                    
-                    <div className="grid grid-cols-4 gap-4 max-w-xl mx-auto mb-8 text-xs font-semibold">
-                      <div className="bg-slate-50 border border-slate-100 rounded-lg py-3.5 px-2">
-                        <p className="text-slate-450 text-[9px] font-bold uppercase tracking-wider mb-0.5">SMS Alerts</p>
-                        <p className="text-xl font-bold text-slate-800">47</p>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-100 rounded-lg py-3.5 px-2">
-                        <p className="text-slate-450 text-[9px] font-bold uppercase tracking-wider mb-0.5">Turnout</p>
-                        <p className="text-xl font-bold text-slate-800">{totalConfirmed}</p>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-100 rounded-lg py-3.5 px-2">
-                        <p className="text-slate-450 text-[9px] font-bold uppercase tracking-wider mb-0.5">Response Time</p>
-                        <p className="text-xl font-bold text-slate-800">18m</p>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-100 rounded-lg py-3.5 px-2">
-                        <p className="text-slate-450 text-[9px] font-bold uppercase tracking-wider mb-0.5">Match Speed</p>
-                        <p className="text-xl font-bold text-slate-800">3.2s</p>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={() => { updateInventoryUnits('O-', 12); resetMobilization(); }}
-                      className="bg-emerald-600 text-white px-8 py-3 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm"
-                    >
-                      Update Inventory & Close Alert
-                    </button>
-                  </div>
-
-                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                    <h4 className="font-bold text-slate-900 text-xs mb-4 uppercase tracking-wider">Turnout Accumulation Timeline</h4>
-                    <div style={{ height: '220px', width: '100%' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={timelineData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                          <XAxis dataKey="time" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="confirmed" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3 text-left">Donor Name</th>
+                      <th className="px-6 py-3 text-left">Blood Type</th>
+                      <th className="px-6 py-3 text-left">Blood Donated Date</th>
+                      <th className="px-6 py-3 text-left">Expiry Date (35 Days)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                    {donors.filter(d => d.bloodType === selectedInventoryType).map(donor => {
+                      const donatedDate = new Date(donor.lastDonation);
+                      const expiryDate = new Date(donatedDate.getTime() + 35 * 24 * 60 * 60 * 1000);
+                      return (
+                        <tr key={donor.id} className="hover:bg-slate-50/50 cursor-pointer" onClick={() => { setSelectedDonor(donor); setTab('donor_detail'); }}>
+                          <td className="px-6 py-4 font-bold text-slate-900">{donor.name}</td>
+                          <td className="px-6 py-4"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span></td>
+                          <td className="px-6 py-4 text-slate-600">{donatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                          <td className="px-6 py-4 text-rose-600">{expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* TAB: RE-ELIGIBILITY SCAN */}
-          {tab === 'reeligibility' && (
-            <div className="grid lg:grid-cols-3 gap-6 fade-in items-start">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                  <h4 className="font-bold text-slate-900 text-sm tracking-tight mb-2">Automated Interval Tracker</h4>
-                  <p className="text-slate-500 text-xs leading-relaxed mb-6">
-                    Run periodic scans to locate voluntary profiles that have passed their 90-day whole-blood interval recovery. These donors are dynamically updated as active candidates.
-                  </p>
-                  
-                  {!reEligibilityScanning && !reEligibilityComplete ? (
-                    <button 
-                      onClick={runReEligibilityScan}
-                      className="bg-[#C21C24] text-white px-6 py-2.5 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all shadow-sm"
-                    >
-                      Initialize Database Query Scan
-                    </button>
-                  ) : reEligibilityScanning ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                        <svg className="w-4 h-4 animate-spin text-[#C21C24]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <span>Scanning active profiles...</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-[#C21C24] h-1.5 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 text-emerald-800">
-                      <h5 className="font-bold text-sm tracking-tight mb-1">Scan Complete: 18 Eligible Profiles Located</h5>
-                      <p className="text-slate-650 text-xs mb-4">18 donors have completed their recovery timelines. Send automated re-eligibility SMS alerts.</p>
-                      <button 
-                        onClick={dispatchEligibilityReminders}
-                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm"
-                      >
-                        Dispatch Eligibility SMS Broadcast
-                      </button>
-                    </div>
-                  )}
-                </div>
+          {/* TAB: DONOR DETAIL */}
+          {tab === 'donor_detail' && selectedDonor && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900 text-lg">Donor Details</h3>
+                <button onClick={() => setTab('blood_records')} className="text-sm text-blue-600 hover:underline">Back to List</button>
               </div>
-              
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">Medical Interval Rules</h4>
-                <div className="space-y-2 text-xs text-slate-650 font-semibold">
-                  <div className="flex justify-between pb-1 border-b border-slate-50"><span>Mandatory Recovery</span><span className="text-slate-800 font-mono">90 Days</span></div>
-                  <div className="flex justify-between pb-1 border-b border-slate-50"><span>Exclusion Holds</span><span className="text-slate-850">Medical Hold flags</span></div>
-                  <div className="flex justify-between"><span>Region Scope</span><span className="text-slate-800">Davao City</span></div>
+              <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
+                <div><strong>Name:</strong> {selectedDonor.name}</div>
+                <div><strong>Blood Type:</strong> {selectedDonor.bloodType}</div>
+                <div><strong>Last Donation:</strong> {new Date(selectedDonor.lastDonation).toLocaleDateString()}</div>
+                <div><strong>Expiry Date:</strong> {new Date(new Date(selectedDonor.lastDonation).getTime() + 35*24*60*60*1000).toLocaleDateString()}</div>
+                <div><strong>Status:</strong> {selectedDonor.status || 'N/A'}</div>
+                <div><strong>Contact:</strong> {selectedDonor.phone || 'N/A'}</div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DONOR RECALL (CAPSTONE) */}
+          {tab === 'recall' && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Eligible Donor Detection (Donor Recall)</h3>
+                  <p className="text-xs text-slate-500 mt-1">Automated donor recall after the required 85-90 day eligibility period.</p>
                 </div>
+                <button 
+                  onClick={() => setShowSmsConfirmModal(true)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2"
+                >
+                  <Send className="w-3.5 h-3.5" /> Dispatch SMS Recall
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3 text-left">Donor Name</th>
+                      <th className="px-6 py-3 text-left">Blood Type</th>
+                      <th className="px-6 py-3 text-left">Last Donation Date</th>
+                      <th className="px-6 py-3 text-left">Days Since Donation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                    {donors.map(donor => {
+                      const today = new Date('2026-06-27');
+                      const lastDonationDate = new Date(donor.lastDonation);
+                      const diffTime = Math.abs(today - lastDonationDate);
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      return { ...donor, diffDays };
+                    }).filter(donor => donor.diffDays >= 85 && donor.diffDays <= 90).map(donor => (
+                        <tr key={donor.id} className="hover:bg-slate-50/50">
+                          <td className="px-6 py-4 font-bold text-slate-900">{donor.name}</td>
+                          <td className="px-6 py-4"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span></td>
+                          <td className="px-6 py-4 text-slate-600">{donor.lastDonation}</td>
+                          <td className="px-6 py-4 text-amber-600 font-bold">{donor.diffDays} Days</td>
+                        </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1108,7 +879,7 @@ export default function AdminDashboard() {
           {tab === 'donormap' && (
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm fade-in">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span>Donor Distribution Heat Points - Davao City</span>
+                <span>Blood hospitals partnered with SNBC and other bloodbanks</span>
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#C21C24] rounded-full"></span>SPMC target</span>
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>Registered Donors</span>
@@ -1118,7 +889,47 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: DONOR REGISTRY */}
+          {/* TAB: USER MANAGEMENT */}
+          {tab === 'users' && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-sm tracking-tight">System Access Privileges</h3>
+                <button className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
+                  <Plus className="w-4 h-4" /> Register New User
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3 text-left">User ID</th>
+                      <th className="px-6 py-3 text-left">Name</th>
+                      <th className="px-6 py-3 text-left">Role</th>
+                      <th className="px-6 py-3 text-left">Email Contact</th>
+                      <th className="px-6 py-3 text-left">Account Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50/50">
+                        <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{u.id}</td>
+                        <td className="px-6 py-4 font-bold text-slate-900">{u.name}</td>
+                        <td className="px-6 py-4 text-blue-600">{u.role}</td>
+                        <td className="px-6 py-4 text-slate-500 font-mono">{u.email}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 border-emerald-100 text-emerald-700">
+                            {u.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DONOR MANAGEMENT */}
           {tab === 'donors' && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
@@ -1141,7 +952,7 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <ShieldAlert className="w-4 h-4" />
-                  <span>{accountFlagged ? 'Account Flagged: Maria Santos' : 'Flag / Restrict Demo Account'}</span>
+                  <span>{accountFlagged ? 'Medical Hold Applied (Maria Santos)' : 'Flag / Apply Deferral Record'}</span>
                 </button>
               </div>
 
@@ -1152,9 +963,9 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 text-left">Registry ID</th>
                       <th className="px-6 py-3 text-left">Donor Name</th>
                       <th className="px-6 py-3 text-left">Blood Type</th>
-                      <th className="px-6 py-3 text-left">Primary Address</th>
                       <th className="px-6 py-3 text-left">Phone Number</th>
-                      <th className="px-6 py-3 text-left">Registry Status</th>
+                      <th className="px-6 py-3 text-left">Donor Status</th>
+                      <th className="px-6 py-3 text-left">Registry Validation</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
@@ -1168,15 +979,23 @@ export default function AdminDashboard() {
                           <td className="px-6 py-3.5 font-mono text-[11px] font-bold text-slate-400">{d.id}</td>
                           <td className="px-6 py-3.5 font-bold text-slate-900">{d.name}</td>
                           <td className="px-6 py-3.5"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{d.bloodType}</span></td>
-                          <td className="px-6 py-3.5 text-slate-500 font-normal">{d.address || 'Davao City'}</td>
                           <td className="px-6 py-3.5 text-slate-500 font-mono font-normal">{d.phone}</td>
+                          <td className="px-6 py-3.5">
+                            {d.totalDonations > 1 ? (
+                              <span className="text-emerald-600 font-bold">Regular</span>
+                            ) : d.totalDonations === 1 ? (
+                              <span className="text-blue-600 font-bold">New</span>
+                            ) : (
+                              <span className="text-slate-400 font-bold">Lapsed</span>
+                            )}
+                          </td>
                           <td className="px-6 py-3.5">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                               d.name === 'Maria C. Santos' && accountFlagged 
                                 ? 'bg-rose-50 border-rose-100 text-[#C21C24]' 
                                 : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                             }`}>
-                              {d.name === 'Maria C. Santos' && accountFlagged ? 'Restricted' : 'Cleared'}
+                              {d.name === 'Maria C. Santos' && accountFlagged ? 'Temporary Deferral' : 'Cleared'}
                             </span>
                           </td>
                         </tr>
@@ -1221,86 +1040,609 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: BLOOD RELEASE REQUESTS */}
-          {tab === 'bloodrequests' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                    <tr>
-                      <th className="px-6 py-4 text-left">Reference No</th>
-                      <th className="px-6 py-4 text-left">Patient Details</th>
-                      <th className="px-6 py-4 text-left">Release Center</th>
-                      <th className="px-6 py-4 text-left">Units / Urgency</th>
-                      <th className="px-6 py-4 text-left">Attesting Physician</th>
-                      <th className="px-6 py-4 text-left">Registry Status</th>
-                      <th className="px-6 py-4 text-left">Administrative Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                    {bloodRequests.map((req) => (
-                      <tr key={req.refNo} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{req.refNo}</td>
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-slate-900">{req.patientName}</p>
-                          <p className="text-[10px] text-slate-400 font-semibold">{req.hospital} · Age: {req.patientAge}</p>
-                          {req.notes && <p className="text-[9px] text-blue-600 font-bold mt-1.5 flex items-center gap-1"><Info className="w-3 h-3" /> Note: {req.notes}</p>}
-                        </td>
-                        <td className="px-6 py-4 text-[11px] text-slate-700">{req.bloodCenter}</td>
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-slate-800">{req.units} bags <span className="font-black text-[#C21C24] font-mono">({req.patientBloodType})</span></p>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                            req.urgency === 'emergency' ? 'text-[#C21C24]' : req.urgency === 'urgent' ? 'text-amber-600' : 'text-slate-450'
-                          }`}>{req.urgency}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-slate-800">{req.physician}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">Form ref: {req.hospitalRefNo || 'None'}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            req.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-705' :
-                            req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                            req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
-                          }`}>
-                            {req.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            {req.status === 'Pending' && (
-                              <button 
-                                onClick={() => handleRequestAction(req.refNo, 'Processing')}
-                                className="bg-blue-650 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-blue-700 transition"
-                              >
-                                Process
-                              </button>
-                            )}
-                            {req.status === 'Processing' && (
-                              <button 
-                                onClick={() => updateBloodRequestStatus(req.refNo, 'Fulfilled')}
-                                className="bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-emerald-700 transition"
-                              >
-                                Fulfill
-                              </button>
-                            )}
-                            {req.status !== 'Fulfilled' && req.status !== 'Declined' && (
-                              <button 
-                                onClick={() => updateBloodRequestStatus(req.refNo, 'Declined')}
-                                className="border border-slate-200 text-[#C21C24] hover:bg-rose-50/35 font-bold text-[10px] px-2.5 py-1.5 rounded transition"
-                              >
-                                Decline
-                              </button>
-                            )}
-                            {(req.status === 'Fulfilled' || req.status === 'Declined') && (
-                              <span className="text-[10px] text-slate-405 font-bold uppercase tracking-wider">Completed</span>
-                            )}
-                          </div>
-                        </td>
+          {/* TAB: BLOOD ISSUANCE */}
+          {tab === 'issuance' && (
+            <div className="space-y-4 fade-in">
+              {/* Emergency Retracking Banner */}
+              {emergencyBloodType && (() => {
+                const logs = getLastDistributionByBloodType(emergencyBloodType);
+                return logs.length > 0 ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-5">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-[#C21C24] flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-bold text-[#C21C24] text-sm mb-1">⚠ Emergency Retrack – {emergencyBloodType} Unavailable</p>
+                        <p className="text-xs text-rose-700 mb-3">The last {emergencyBloodType} distribution was sent to the hospitals below. Contact them to check for availability and request a temporary loan.</p>
+                        <div className="space-y-2">
+                          {logs.slice(0, 3).map(log => {
+                            const hosp = hospitals.find(h => h.id === log.hospitalId);
+                            return (
+                              <div key={log.id} className="bg-white border border-rose-100 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                  <p className="font-bold text-slate-900 text-xs">{log.hospitalName}</p>
+                                  <p className="text-[10px] text-slate-500">{log.units} bags distributed on {log.date}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xs font-bold text-slate-700">{hosp?.contact}</p>
+                                  <p className="text-[10px] font-mono text-blue-600">{hosp?.phone}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <button onClick={() => setEmergencyBloodType(null)} className="text-rose-400 hover:text-rose-600"><XCircle className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Hospital Blood Issuance Ledger</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Blood bags released to partner hospitals and blood centres</p>
+                  </div>
+                  <button className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
+                    <Plus className="w-4 h-4" /> Create Issuance
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-4 text-left">Reference No</th>
+                        <th className="px-6 py-4 text-left">Requesting Hospital</th>
+                        <th className="px-6 py-4 text-left">Blood Type / Units</th>
+                        <th className="px-6 py-4 text-left">Urgency</th>
+                        <th className="px-6 py-4 text-left">Contact Person</th>
+                        <th className="px-6 py-4 text-left">Issuance Status</th>
+                        <th className="px-6 py-4 text-left">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                      {bloodRequests.map((req) => {
+                        const hospRecord = hospitals.find(h => h.id === req.hospitalId);
+                        const inventoryItem = inventory.find(i => i.type === req.patientBloodType);
+                        const stockInsufficient = inventoryItem && inventoryItem.units < req.units;
+                        return (
+                          <tr key={req.refNo} className={`hover:bg-slate-50/50 transition-colors ${stockInsufficient ? 'bg-rose-50/30' : ''}`}>
+                            <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{req.refNo}</td>
+                            <td className="px-6 py-4">
+                              <p className="font-bold text-slate-900">{req.hospital}</p>
+                              <p className="text-[10px] text-slate-400 font-semibold">{hospRecord?.address || req.ward}</p>
+                              {req.diagnosis && <p className="text-[9px] text-blue-600 font-bold mt-1">Dx: {req.diagnosis}</p>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{req.patientBloodType}</span>
+                              <span className="ml-2 font-bold text-slate-800">{req.units} bags</span>
+                              {stockInsufficient && (
+                                <p className="text-[9px] text-[#C21C24] font-bold mt-1 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" /> Insufficient stock
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                req.urgency === 'emergency' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' : req.urgency === 'urgent' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-slate-50 border-slate-100 text-slate-500'
+                              }`}>{req.urgency}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="font-bold text-slate-800">{req.contactPerson}</p>
+                              <p className="text-[10px] text-slate-400 font-mono">{req.contactNumber}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                req.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
+                              }`}>{req.status}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-2 flex-wrap">
+                                {req.status === 'Pending' && !stockInsufficient && (
+                                  <button onClick={() => handleRequestAction(req.refNo, 'Processing')} className="bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-blue-700 transition">Process</button>
+                                )}
+                                {req.status === 'Pending' && stockInsufficient && (
+                                  <button onClick={() => setEmergencyBloodType(req.patientBloodType)} className="bg-rose-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-rose-700 transition flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" /> Retrack
+                                  </button>
+                                )}
+                                {req.status === 'Processing' && (
+                                  <button onClick={() => updateBloodRequestStatus(req.refNo, 'Fulfilled')} className="bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-emerald-700 transition">Fulfill</button>
+                                )}
+                                {req.status !== 'Fulfilled' && req.status !== 'Declined' && (
+                                  <button onClick={() => updateBloodRequestStatus(req.refNo, 'Declined')} className="border border-slate-200 text-[#C21C24] hover:bg-rose-50/35 font-bold text-[10px] px-2.5 py-1.5 rounded transition">Decline</button>
+                                )}
+                                {(req.status === 'Fulfilled' || req.status === 'Declined') && (
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Completed</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: HOSPITAL MANAGEMENT – FULL CRUD */}
+          {tab === 'hospitals' && (
+            <div className="space-y-4 fade-in">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Partner Hospital & Blood Centre Registry</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{hospitals.length} registered partners</p>
+                  </div>
+                  <button
+                    onClick={() => { setEditingHospital(null); setHospitalForm({ name: '', type: 'Government', contact: '', phone: '', email: '', address: '' }); setShowHospitalModal(true); }}
+                    className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add Hospital
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 text-left">ID</th>
+                        <th className="px-6 py-3 text-left">Hospital / Blood Centre</th>
+                        <th className="px-6 py-3 text-left">Type</th>
+                        <th className="px-6 py-3 text-left">Contact Person</th>
+                        <th className="px-6 py-3 text-left">Phone</th>
+                        <th className="px-6 py-3 text-left">Email</th>
+                        <th className="px-6 py-3 text-left">Address</th>
+                        <th className="px-6 py-3 text-left">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                      {hospitals.map(h => (
+                        <tr key={h.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{h.id}</td>
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-slate-900">{h.name}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              h.type === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                              h.type === 'Blood Bank' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                              'bg-slate-50 border-slate-200 text-slate-600'
+                            }`}>{h.type}</span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-700">{h.contact}</td>
+                          <td className="px-6 py-4 font-mono text-slate-600">{h.phone}</td>
+                          <td className="px-6 py-4 text-slate-500">{h.email}</td>
+                          <td className="px-6 py-4 text-slate-500 max-w-[180px] truncate">{h.address}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => { setEditingHospital(h); setHospitalForm({ name: h.name, type: h.type, contact: h.contact, phone: h.phone, email: h.email || '', address: h.address || '' }); setShowHospitalModal(true); }}
+                                className="border border-blue-100 bg-blue-50 text-blue-700 font-bold text-[10px] px-2.5 py-1 rounded hover:bg-blue-100 transition"
+                              >Edit</button>
+                              <button
+                                onClick={() => { if (window.confirm(`Delete ${h.name}?`)) deleteHospital(h.id); }}
+                                className="border border-rose-100 bg-rose-50 text-[#C21C24] font-bold text-[10px] px-2.5 py-1 rounded hover:bg-rose-100 transition"
+                              >Delete</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DEMAND FORECASTING (CAPSTONE) – EXPANDED */}
+          {tab === 'forecasting' && (() => {
+            const latestForecast = forecastData.filter(w => w.actual === null)[0];
+            const historicalAvg = Math.round(forecastData.filter(w => w.actual !== null).reduce((s, w) => s + w.actual, 0) / (forecastData.filter(w => w.actual !== null).length || 1));
+            const trend = forecastData.length >= 2 ? forecastData[forecastData.length - 1].demand - forecastData[forecastData.length - 2].demand : 0;
+            return (
+              <div className="space-y-5 fade-in">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Next Week Forecast</p>
+                    <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{latestForecast?.demand ?? '—'}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">units predicted</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Confidence Band</p>
+                    <p className="text-2xl font-extrabold text-blue-700 font-mono">{latestForecast?.lower ?? '—'}–{latestForecast?.upper ?? '—'}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">±7% margin</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Historical Avg</p>
+                    <p className="text-2xl font-extrabold text-emerald-600 font-mono">{historicalAvg}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">actual units/week</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Demand Trend</p>
+                    <p className={`text-2xl font-extrabold font-mono ${trend > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{trend > 0 ? '+' : ''}{trend}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{trend > 0 ? 'Rising demand' : trend < 0 ? 'Falling demand' : 'Stable'}</p>
+                  </div>
+                </div>
+
+                {/* Chart */}
+                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm tracking-tight">Regression-Enhanced Demand Forecast</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Historical actuals vs. predicted demand. Dashed bands = confidence interval.</p>
+                    </div>
+                    <button
+                      onClick={() => generateNextWeeks(4)}
+                      className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm"
+                    >
+                      <Activity className="w-3.5 h-3.5" /> Generate Next 4 Weeks
+                    </button>
+                  </div>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={forecastData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="week" stroke="#94a3b8" fontSize={10} />
+                        <YAxis stroke="#94a3b8" fontSize={10} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+                        <Line type="monotone" dataKey="upper" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" name="Upper Bound" dot={false} />
+                        <Line type="monotone" dataKey="lower" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" name="Lower Bound" dot={false} />
+                        <Line type="monotone" dataKey="demand" stroke="#C21C24" strokeWidth={3} name="Predicted Demand" dot={{ r: 4 }} />
+                        <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={3} name="Actual Distribution" dot={{ r: 4 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center gap-5 mt-3 text-[10px] text-slate-500 font-semibold">
+                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
+                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
+                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-400 inline-block rounded" style={{borderTop:'2px dashed'}}></span>Confidence Band</span>
+                    <span className="ml-auto text-slate-400">Weeks marked (P) = predicted, no actual recorded yet</span>
+                  </div>
+                </div>
+
+                {/* Weekly breakdown table */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Weekly Demand Breakdown</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                        <tr>
+                          <th className="px-6 py-3 text-left">Week</th>
+                          <th className="px-6 py-3 text-left">Predicted Demand</th>
+                          <th className="px-6 py-3 text-left">Actual Distribution</th>
+                          <th className="px-6 py-3 text-left">Confidence Band</th>
+                          <th className="px-6 py-3 text-left">Accuracy</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                        {forecastData.map((w, i) => {
+                          const acc = w.actual !== null ? Math.round(100 - (Math.abs(w.demand - w.actual) / w.demand) * 100) : null;
+                          return (
+                            <tr key={i} className={`hover:bg-slate-50/50 ${w.actual === null ? 'bg-blue-50/20' : ''}`}>
+                              <td className="px-6 py-3 font-bold text-slate-900">{w.week}</td>
+                              <td className="px-6 py-3 font-mono text-[#C21C24] font-bold">{w.demand}</td>
+                              <td className="px-6 py-3 font-mono text-emerald-700 font-bold">{w.actual ?? <span className="text-slate-400">—</span>}</td>
+                              <td className="px-6 py-3 text-slate-500">{w.lower} – {w.upper}</td>
+                              <td className="px-6 py-3">
+                                {acc !== null ? (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                    acc >= 90 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                    acc >= 75 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                    'bg-rose-50 border-rose-100 text-[#C21C24]'
+                                  }`}>{acc}%</span>
+                                ) : <span className="text-slate-400 text-[10px] font-bold">Predicted</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* TAB: DISTRIBUTION RECOMMENDATION (CAPSTONE) – EQUITY ALGORITHM */}
+          {tab === 'distribution' && (() => {
+            const allocations = getEquityAllocations();
+            return (
+              <div className="space-y-5 fade-in">
+                {/* Info banner */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-blue-800">
+                    <p className="font-bold mb-0.5">Equity-Based Blood Distribution Algorithm</p>
+                    <p className="text-blue-700">Allocations are computed proportionally based on hospital type weighting (Government 1.5×, Blood Bank 1.2×, Private 1.0×) and the next predicted demand week. Only units above the safety threshold are released.</p>
+                  </div>
+                </div>
+
+                {allocations.map(({ bloodType, status, allocations: hospAllocs }) => (
+                  <div key={bloodType} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${
+                      status === 'critical' ? 'bg-rose-50/30' : status === 'low' ? 'bg-amber-50/20' : ''
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-sm font-mono">{bloodType}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                          status === 'critical' ? 'text-[#C21C24]' : status === 'low' ? 'text-amber-600' : 'text-emerald-600'
+                        }`}>{status === 'critical' ? '⚠ Critical' : status === 'low' ? '↓ Low Stock' : '✓ Stable'}</span>
+                        <span className="text-[10px] text-slate-400">Stock: {hospAllocs[0]?.currentStock} / Threshold: {hospAllocs[0]?.threshold} / Releasable: {hospAllocs[0]?.safeToRelease}</span>
+                      </div>
+                      {hospAllocs[0]?.safeToRelease === 0 && (
+                        <button onClick={() => handleEmergencyRetrack(bloodType)} className="flex items-center gap-1.5 text-[10px] font-bold text-[#C21C24] bg-rose-50 border border-rose-100 px-2.5 py-1 rounded hover:bg-rose-100 transition">
+                          <AlertTriangle className="w-3 h-3" /> Emergency Retrack
+                        </button>
+                      )}
+                    </div>
+                    {hospAllocs[0]?.safeToRelease > 0 ? (
+                      <table className="min-w-full">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                          <tr>
+                            <th className="px-6 py-3 text-left">Hospital / Centre</th>
+                            <th className="px-6 py-3 text-left">Type</th>
+                            <th className="px-6 py-3 text-left">Weight</th>
+                            <th className="px-6 py-3 text-left">Suggested Units</th>
+                            <th className="px-6 py-3 text-left">Emergency Contact</th>
+                            <th className="px-6 py-3 text-left">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                          {hospAllocs.map(a => (
+                            <tr key={a.hospitalId} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-3 font-bold text-slate-900">{a.hospitalName}</td>
+                              <td className="px-6 py-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  a.hospitalType === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                  a.hospitalType === 'Blood Bank' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                  'bg-slate-50 border-slate-200 text-slate-600'
+                                }`}>{a.hospitalType}</span>
+                              </td>
+                              <td className="px-6 py-3 font-mono text-slate-600">{a.hospitalType === 'Government' ? '1.5×' : a.hospitalType === 'Blood Bank' ? '1.2×' : '1.0×'}</td>
+                              <td className="px-6 py-3">
+                                <span className="text-lg font-black text-slate-900 font-mono">{a.suggestedUnits}</span>
+                                <span className="text-slate-400 ml-1 text-[10px]">bags</span>
+                              </td>
+                              <td className="px-6 py-3">
+                                <p className="font-bold text-slate-700">{a.hospitalContact}</p>
+                                <p className="font-mono text-[10px] text-blue-600">{a.hospitalPhone}</p>
+                              </td>
+                              <td className="px-6 py-3">
+                                {a.suggestedUnits > 0 ? (
+                                  <button
+                                    onClick={() => {
+                                      setAllocateTarget({ hospitalId: a.hospitalId, hospitalName: a.hospitalName, bloodType, units: a.suggestedUnits });
+                                      setShowAllocateModal(true);
+                                    }}
+                                    className="bg-emerald-600 text-white font-bold text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition"
+                                  >
+                                    Allocate
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">No surplus</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="px-6 py-5 text-xs text-[#C21C24] font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" /> Cannot allocate – stock is at or below safety threshold. Use Emergency Retrack to locate a lending source.
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* TAB: DISTRIBUTION HISTORY */}
+          {tab === 'hospital_history' && (
+            <div className="space-y-4 fade-in">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Distribution History</h3>
+                  <select
+                    value={distHospitalFilter}
+                    onChange={e => setDistHospitalFilter(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-slate-50 outline-none focus:border-slate-800"
+                  >
+                    <option value="ALL">All Hospitals</option>
+                    {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 text-left">Dist. ID</th>
+                        <th className="px-6 py-3 text-left">Hospital</th>
+                        <th className="px-6 py-3 text-left">Units Released</th>
+                        <th className="px-6 py-3 text-left">Date</th>
+                        <th className="px-6 py-3 text-left">Allocated By</th>
+                        <th className="px-6 py-3 text-left">View Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                      {distributionLog
+                        .filter(log => distHospitalFilter === 'ALL' || log.hospitalId === distHospitalFilter)
+                        .filter(log => !emergencyBloodType || log.bloodType === emergencyBloodType)
+                        .map(log => (
+                          <tr
+                            key={log.id}
+                            className="hover:bg-rose-50/20 transition-colors cursor-pointer group"
+                            onClick={() => openDistLog(log)}
+                          >
+                            <td className="px-6 py-3 font-mono text-[11px] font-bold text-slate-400">{log.id}</td>
+                            <td className="px-6 py-3 font-bold text-slate-900 group-hover:text-[#C21C24] transition-colors">{log.hospitalName}</td>
+                            <td className="px-6 py-3 font-bold text-slate-800 font-mono">{log.units} bags</td>
+                            <td className="px-6 py-3 text-slate-600">{log.date}</td>
+                            <td className="px-6 py-3 text-slate-500">{log.allocatedBy}</td>
+                            <td className="px-6 py-3">
+                              <span className="text-[10px] text-slate-400 group-hover:text-[#C21C24] transition-colors flex items-center gap-1 font-bold">View Record <ChevronRight className="w-3 h-3" /></span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                  {distributionLog
+                    .filter(log => distHospitalFilter === 'ALL' || log.hospitalId === distHospitalFilter)
+                    .filter(log => !emergencyBloodType || log.bloodType === emergencyBloodType)
+                    .length === 0 && (
+                    <div className="px-6 py-12 text-center text-slate-400 text-xs">No distribution records found.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Emergency Retrack highlight banner */}
+              {emergencyBloodType && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-[#C21C24] flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold text-[#C21C24] text-sm mb-0.5">Emergency Retrack – Blood Type {emergencyBloodType}</p>
+                    <p className="text-xs text-rose-700">Showing only <strong>{emergencyBloodType}</strong> distributions. Click any row to view full details and locate a possible lending source.</p>
+                  </div>
+                  <button onClick={() => setEmergencyBloodType(null)} className="text-rose-400 hover:text-rose-600"><XCircle className="w-4 h-4" /></button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: DISTRIBUTION RECORD DETAIL (inline page, same pattern as blood_records) */}
+          {tab === 'dist_record_detail' && selectedDistLog && (() => {
+            const fmt = d => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+            const getBulkDistributionData = (log) => {
+              const types = ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
+              
+              return types.map(type => {
+                let unitsReleased = 0;
+                if (type === log.bloodType) {
+                  unitsReleased = log.units;
+                } else {
+                  // Deterministic mock units released in bulk for other types based on record ID
+                  const hash = (log.id.charCodeAt(log.id.length - 1) + type.charCodeAt(0)) % 5;
+                  unitsReleased = hash === 0 ? 0 : hash === 1 ? 1 : hash === 2 ? 2 : 0;
+                }
+
+                const distDate = new Date(log.date);
+                const requestDate = new Date(distDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+                const expiryDate = new Date(distDate.getTime() + 35 * 24 * 60 * 60 * 1000);
+
+                return {
+                  type,
+                  unitsReleased,
+                  requestDate,
+                  distDate,
+                  expiryDate
+                };
+              });
+            };
+
+            return (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in space-y-4 p-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Distribution Record — {selectedDistLog.id}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{selectedDistLog.hospitalName}</p>
+                  </div>
+                  <button
+                    onClick={() => setTab('hospital_history')}
+                    className="text-xs text-[#C21C24] font-bold hover:underline"
+                  >← Back to Distribution History</button>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 rounded-lg">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider text-left">
+                      <tr>
+                        <th className="px-6 py-3">Blood Type</th>
+                        <th className="px-6 py-3">Units Released</th>
+                        <th className="px-6 py-3">Date of Request</th>
+                        <th className="px-6 py-3">Date of Distribution</th>
+                        <th className="px-6 py-3">Expiry Date (35-day)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-655">
+                      {getBulkDistributionData(selectedDistLog).map((item) => (
+                        <tr key={item.type} className={`hover:bg-slate-50/50 transition-colors ${item.unitsReleased > 0 ? 'bg-emerald-50/10' : ''}`}>
+                          <td className="px-6 py-4">
+                            <span className="text-base font-black text-slate-900 font-mono">{item.type}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {item.unitsReleased > 0 ? (
+                              <>
+                                <span className="text-base font-bold font-mono text-slate-800">{item.unitsReleased}</span>
+                                <span className="text-slate-400 font-medium ml-1">units</span>
+                              </>
+                            ) : (
+                              <span className="text-slate-350 font-normal">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {item.unitsReleased > 0 ? (
+                              <span className="text-slate-600 font-mono">{fmt(item.requestDate)}</span>
+                            ) : (
+                              <span className="text-slate-350 font-normal">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {item.unitsReleased > 0 ? (
+                              <span className="text-emerald-700 font-bold font-mono">{fmt(item.distDate)}</span>
+                            ) : (
+                              <span className="text-slate-350 font-normal">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {item.unitsReleased > 0 ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-50 border-rose-100 text-[#C21C24] font-mono">
+                                {fmt(item.expiryDate)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-350 font-normal">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Extra hospital info footer */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-6">
+                    <span><span className="font-bold text-slate-700">Receiving Hospital:</span> {selectedDistLog.hospitalName}</span>
+                    <span><span className="font-bold text-slate-700">Allocated By:</span> {selectedDistLog.allocatedBy}</span>
+                    <span><span className="font-bold text-slate-700">Record ID:</span> <span className="font-mono">{selectedDistLog.id}</span></span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* TAB: REPORTS */}
+          {tab === 'reports' && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in p-6">
+              <h3 className="font-bold text-slate-900 text-sm tracking-tight mb-6">Operational Reports</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <button className="p-5 border border-slate-200 rounded-xl text-left hover:border-[#C21C24] hover:shadow-md transition bg-slate-50">
+                  <Activity className="w-6 h-6 text-[#C21C24] mb-3" />
+                  <h4 className="font-bold text-slate-900 text-xs">Inventory & Issuance Report</h4>
+                  <p className="text-[10px] text-slate-500 mt-1">Download monthly stock levels and hospital distributions.</p>
+                </button>
+                <button className="p-5 border border-slate-200 rounded-xl text-left hover:border-[#C21C24] hover:shadow-md transition bg-slate-50">
+                  <Users className="w-6 h-6 text-[#C21C24] mb-3" />
+                  <h4 className="font-bold text-slate-900 text-xs">Donor Recall Analytics</h4>
+                  <p className="text-[10px] text-slate-500 mt-1">Export SMS response rates and return donation metrics.</p>
+                </button>
               </div>
             </div>
           )}
@@ -1334,6 +1676,135 @@ export default function AdminDashboard() {
               >
                 Save Status note
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HOSPITAL CRUD MODAL */}
+      {showHospitalModal && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 w-full max-w-lg shadow-xl fade-in">
+            <h4 className="font-bold text-sm text-slate-900 mb-1 tracking-tight">
+              {editingHospital ? 'Edit Hospital / Blood Centre' : 'Add Hospital / Blood Centre'}
+            </h4>
+            <p className="text-xs text-slate-400 mb-5">All fields are used for the distribution algorithm and emergency contact lookup.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Hospital / Centre Name</label>
+                <input type="text" value={hospitalForm.name} onChange={e => setHospitalForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Davao Medical School Foundation" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Type</label>
+                <select value={hospitalForm.type} onChange={e => setHospitalForm(f => ({...f, type: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                  <option>Government</option>
+                  <option>Private</option>
+                  <option>Blood Bank</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Contact Person</label>
+                <input type="text" value={hospitalForm.contact} onChange={e => setHospitalForm(f => ({...f, contact: e.target.value}))} placeholder="Dr. Juan Dela Cruz" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Phone</label>
+                <input type="text" value={hospitalForm.phone} onChange={e => setHospitalForm(f => ({...f, phone: e.target.value}))} placeholder="0917-000-0000" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email</label>
+                <input type="email" value={hospitalForm.email} onChange={e => setHospitalForm(f => ({...f, email: e.target.value}))} placeholder="blood@hospital.ph" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Address</label>
+                <input type="text" value={hospitalForm.address} onChange={e => setHospitalForm(f => ({...f, address: e.target.value}))} placeholder="Purok 5, Tigatto, Davao City" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 text-xs font-semibold mt-5">
+              <button onClick={() => setShowHospitalModal(false)} className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-650 rounded hover:bg-slate-100 transition-all">Cancel</button>
+              <button
+                onClick={() => {
+                  if (!hospitalForm.name.trim()) return alert('Hospital name is required.');
+                  if (editingHospital) {
+                    updateHospital(editingHospital.id, hospitalForm);
+                  } else {
+                    addHospital(hospitalForm);
+                  }
+                  setShowHospitalModal(false);
+                }}
+                className="px-4 py-2 bg-[#C21C24] text-white rounded hover:bg-[#A8181F] transition-all shadow-sm"
+              >
+                {editingHospital ? 'Save Changes' : 'Add Hospital'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Distribution log detail is now an inline page (tab === 'dist_record_detail'), not a modal */}
+
+      {/* ALLOCATE CONFIRMATION MODAL */}
+      {showAllocateModal && allocateTarget && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowAllocateModal(false)}>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm modal-in" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-white rounded-t-2xl">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Confirm Allocation</p>
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Release Blood Stock</h4>
+            </div>
+            <div className="p-6">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  You are about to release{' '}
+                  <span className="font-black text-slate-900">{allocateTarget.units} bags</span> of{' '}
+                  <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[11px] font-mono">{allocateTarget.bloodType}</span>{' '}
+                  to <span className="font-bold text-slate-900">{allocateTarget.hospitalName}</span>.
+                </p>
+                <p className="text-[10px] text-slate-500 mt-2">This will immediately decrement the inventory and log the distribution. This action cannot be undone.</p>
+              </div>
+              <div className="flex gap-2.5 text-xs font-semibold">
+                <button
+                  onClick={() => setShowAllocateModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-650 rounded-lg hover:bg-slate-100 transition"
+                >Cancel</button>
+                <button
+                  onClick={() => {
+                    recordDistribution(allocateTarget.hospitalId, allocateTarget.hospitalName, allocateTarget.bloodType, allocateTarget.units);
+                    setShowAllocateModal(false);
+                    setAllocateTarget(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-sm"
+                >Confirm Allocate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DISPATCH SMS RECALL CONFIRMATION MODAL */}
+      {showSmsConfirmModal && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSmsConfirmModal(false)}>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm modal-in" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white rounded-t-2xl">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Confirm SMS Dispatch</p>
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Send Donor Recall Messages</h4>
+            </div>
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 space-y-2">
+                <p className="text-xs text-slate-600 leading-relaxed">You are about to send <span className="font-black text-slate-900">automated SMS recall messages</span> to all eligible donors (85–90 day interval complete) via the <span className="font-bold text-blue-700">Semaphore Philippine Gateway</span>.</p>
+                <p className="text-[10px] text-slate-500 bg-white/70 border border-blue-100 rounded-lg p-2.5 font-mono leading-relaxed">"Hello [Donor]. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph."</p>
+              </div>
+              <div className="flex gap-2.5 text-xs font-semibold">
+                <button
+                  onClick={() => setShowSmsConfirmModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-650 rounded-lg hover:bg-slate-100 transition"
+                >Cancel</button>
+                <button
+                  onClick={() => {
+                    dispatchEligibilityReminders();
+                    setShowSmsConfirmModal(false);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-1.5"
+                ><Send className="w-3.5 h-3.5" /> Confirm Dispatch</button>
+              </div>
             </div>
           </div>
         </div>
