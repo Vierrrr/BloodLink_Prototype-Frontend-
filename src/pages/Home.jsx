@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, Bell, ArrowRight, Activity, MapPin, Database,
   X, Phone, Clock, ChevronRight, ChevronLeft, ChevronDown, Users, LogIn, User,
@@ -292,8 +292,44 @@ const ParallaxShowcaseSection = React.forwardRef(({
 
 /* ─── Main Page ─── */
 export default function Home() {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Login Form States
+  const [loginRole, setLoginRole] = useState('admin');
+  const [email, setEmail] = useState('admin@bloodlink.dvo');
+  const [password, setPassword] = useState('••••••••');
+  const [loginError, setLoginError] = useState('');
+
+  // Auto-fill emails based on role selection for easy prototype demoing
+  const handleRoleChange = (role) => {
+    setLoginRole(role);
+    setLoginError('');
+    if (role === 'admin') {
+      setEmail('admin@bloodlink.dvo');
+    } else if (role === 'registry') {
+      setEmail('registry@bloodlink.dvo');
+    } else if (role === 'bloodbank') {
+      setEmail('bloodbank@bloodlink.dvo');
+    } else if (role === 'issuance') {
+      setEmail('hospital@bloodlink.dvo');
+    }
+  };
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setLoginError('Email and Password are required.');
+      return;
+    }
+
+    setShowModal(false);
+    if (loginRole === 'admin') navigate('/admin/dashboard');
+    else if (loginRole === 'registry') navigate('/registry/dashboard');
+    else if (loginRole === 'bloodbank') navigate('/bloodbank/dashboard');
+    else if (loginRole === 'issuance') navigate('/issuance/dashboard');
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -467,56 +503,94 @@ export default function Home() {
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg" style={{ animation: 'fadeIn .2s ease' }}>
-            <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <img src={bloodlinkLogo} alt="BloodLink" className="h-9 w-auto object-contain" />
-                <img src={davaoLogo}     alt="Davao"     className="h-10 w-auto object-contain" />
-              </div>
-              <div className="flex-1 px-4">
-                <p className="text-xs text-slate-400 font-semibold">Select your access portal to continue</p>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg modal-in">
+               <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <img src={bloodlinkLogo} alt="BloodLink" className="h-7 w-auto object-contain" />
+                  <img src={davaoLogo}     alt="Davao"     className="h-8 w-auto object-contain" />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">Portal Authentication</h3>
               </div>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-3">
-              {/* Admin */}
-              <div className="border border-slate-200 rounded-xl p-5 hover:border-slate-400 hover:shadow-sm transition-all group">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Activity className="w-5 h-5 text-slate-700" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 text-sm">Blood Center Portal</h3>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">For center administrators and healthcare facilities</p>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Monitor inventory shortages, trigger emergency donor matching, manage real-time turnout dashboards, and oversee automated SMS dispatch routing.</p>
-                  </div>
+
+            <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+              {loginError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-lg flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{loginError}</span>
                 </div>
-                <Link to="/admin/dashboard" onClick={() => setShowModal(false)}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm">
-                  Access Admin Console <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-              {/* Donor */}
-              <div className="border border-rose-100 rounded-xl p-5 hover:border-rose-300 hover:shadow-sm transition-all group">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Heart className="w-5 h-5 text-[#C21C24]" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 text-sm">Donor Portal</h3>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">For voluntary blood donors and advocates</p>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Register your profile, view real-time blood shortage alerts across the city, log your donation history, and instantly respond to urgent requests.</p>
-                  </div>
+              )}
+
+              {/* Role Quick Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Select User Role</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { id: 'admin',     label: 'Admin',       icon: <Shield className="w-3.5 h-3.5" /> },
+                    { id: 'registry',  label: 'Registry',    icon: <FileText className="w-3.5 h-3.5" /> },
+                    { id: 'bloodbank', label: 'Blood Bank',  icon: <Database className="w-3.5 h-3.5" /> },
+                    { id: 'issuance',  label: 'Hospital',    icon: <Activity className="w-3.5 h-3.5" /> },
+                  ].map(r => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => handleRoleChange(r.id)}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                        loginRole === r.id
+                          ? 'border-[#C21C24] bg-rose-50/50 text-[#C21C24] font-bold shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                      }`}
+                    >
+                      {r.icon}
+                      <span className="text-[10px] whitespace-nowrap">{r.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <Link to="/donor/register" onClick={() => setShowModal(false)}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-[#C21C24] text-white py-2.5 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-colors shadow-sm">
-                  Access Donor Portal <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
               </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none transition-all"
+                  placeholder="name@bloodlink.dvo"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <input
+                  required
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full bg-[#C21C24] hover:bg-[#A8181F] text-white py-2.5 rounded-lg text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" /> Secure Log In
+                </button>
+              </div>
+            </form>
+            <div className="px-7 pb-6 text-center text-[11px] text-slate-400 border-t border-slate-50 pt-4">
+              BloodLink DVO Secure Authentication Gateway
             </div>
-            <div className="px-7 pb-6 text-center text-[11px] text-slate-400">BloodLink DVO · University of Mindanao Capstone Project</div>
           </div>
         </div>
       )}

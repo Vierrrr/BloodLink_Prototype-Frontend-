@@ -2,47 +2,50 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 const initialDonors = [
+  // ── Sample Dataset: Donor Registration ──
   { 
-    id: 'BLD-482931', 
-    firstName: 'Maria C.', 
-    lastName: 'Santos', 
-    name: 'Maria C. Santos', 
-    phone: '+63 917 123 4567', 
-    email: 'maria@example.com', 
-    dob: '1995-10-15', 
-    sex: 'Female', 
-    address: 'Brgy. Buhangin, Davao City', 
-    preferredCenter: 'SPMC Blood Production Services', 
-    bloodType: 'O-', 
-    weight: 54, 
-    donatedBefore: 'yes', 
-    lastDonation: '2025-11-14', 
-    health: [true, true, true, true, true], 
-    consent: true, 
-    totalDonations: 7, 
-    alertsResponded: 4, 
-    livesImpacted: 21, 
-    arrived: false,
-    distance: '1.2 km'
+    id: 'D001', name: 'Donor 1', sex: 'Male', civilStatus: 'Single', dob: '1998-05-12', 
+    bloodType: 'O+', address: 'Buhangin', donationDate: '2025-01-25', status: 'Regular', 
+    lastDonation: '2024-06-15', remarks: 'Eligible', phone: '+63 917 111 1111', distance: '1.2 km', totalDonations: 4 
   },
-  { id: 'BLD-582912', name: 'Juan P. Dela Cruz', phone: '+63 918 234 5678', bloodType: 'O-', lastDonation: '2026-04-01', distance: '1.8 km', totalDonations: 4, arrived: false },
-  { id: 'BLD-938210', name: 'Ana Marie Reyes', phone: '+63 919 345 6789', bloodType: 'O-', lastDonation: '2026-03-30', distance: '2.1 km', totalDonations: 2, arrived: false },
-  { id: 'BLD-293810', name: 'Roberto T. Garcia', phone: '+63 920 456 7890', bloodType: 'O-', lastDonation: '2026-03-29', distance: '2.4 km', totalDonations: 6, arrived: false },
-  { id: 'BLD-394812', name: 'Sofia Isabella Cruz', phone: '+63 921 567 8901', bloodType: 'A-', lastDonation: '2026-04-02', distance: '2.7 km', totalDonations: 5, arrived: false },
-  { id: 'BLD-203912', name: 'Miguel Angelo Ramos', phone: '+63 922 678 9012', bloodType: 'B+', lastDonation: '2025-08-10', distance: '3.1 km', totalDonations: 8, arrived: false },
-  { id: 'BLD-495810', name: 'Gabriela M. Torres', phone: '+63 923 789 0123', bloodType: 'O+', lastDonation: '2025-12-14', distance: '3.5 km', totalDonations: 3, arrived: false },
-  { id: 'BLD-102938', name: 'Carlos Daniel Mendoza', phone: '+63 924 890 1234', bloodType: 'AB-', lastDonation: '2025-10-18', distance: '3.8 km', totalDonations: 1, arrived: false }
+  { 
+    id: 'D002', name: 'Donor 2', sex: 'Female', civilStatus: 'Married', dob: '1992-09-08', 
+    bloodType: 'A+', address: 'Matina', donationDate: '2025-02-02', status: 'New', 
+    lastDonation: '2025-02-02', remarks: 'Eligible', phone: '+63 917 222 2222', distance: '3.4 km', totalDonations: 1 
+  },
+  { 
+    id: 'D003', name: 'Donor 3', sex: 'Male', civilStatus: '—', dob: '—', 
+    bloodType: 'B-', address: '—', donationDate: '2025-02-10', status: 'Lapsed', 
+    lastDonation: '2024-07-08', remarks: 'Eligible', phone: '+63 917 333 3333', distance: '5.1 km', totalDonations: 2 
+  },
+  { 
+    id: 'D004', name: 'Donor 4', sex: 'Female', civilStatus: 'Single', dob: '2000-03-16', 
+    bloodType: 'AB+', address: 'Mintal', donationDate: '2025-02-15', status: 'Regular', 
+    lastDonation: '2024-09-10', remarks: 'Eligible', phone: '+63 917 444 4444', distance: '8.2 km', totalDonations: 5 
+  },
+  // ── Sample Dataset: Deferred Donors ──
+  { 
+    id: 'D014', name: 'Donor 14', sex: 'Male', 
+    bloodType: 'O+', address: 'Davao City', donationDate: '2025-02-05', status: 'Deferred', 
+    lastDonation: '2025-02-05', remarks: 'Low Hemoglobin (Temporary)', phone: '+63 917 555 5555', distance: '2.0 km', totalDonations: 3 
+  },
+  { 
+    id: 'D022', name: 'Donor 22', sex: 'Female', 
+    bloodType: 'A-', address: 'Davao City', donationDate: '2025-02-10', status: 'Deferred', 
+    lastDonation: '2025-02-10', remarks: 'Recent Tattoo (Temporary)', phone: '+63 917 666 6666', distance: '4.5 km', totalDonations: 1 
+  }
 ];
 
 const initialInventory = [
-  { type: 'O-', units: 3, threshold: 5, status: 'critical' },
-  { type: 'O+', units: 24, threshold: 10, status: 'safe' },
-  { type: 'A-', units: 2, threshold: 4, status: 'critical' },
-  { type: 'A+', units: 18, threshold: 10, status: 'safe' },
-  { type: 'B-', units: 3, threshold: 4, status: 'low' },
-  { type: 'B+', units: 20, threshold: 10, status: 'safe' },
-  { type: 'AB-', units: 1, threshold: 3, status: 'critical' },
-  { type: 'AB+', units: 12, threshold: 8, status: 'safe' }
+  // ── Sample Dataset: Blood Components ──
+  { type: 'O+', units: 25, ffp: 293, cryo: 113, cryosup: 51, threshold: 15, status: 'safe' },
+  { type: 'A+', units: 9,  ffp: 160, cryo: 85,  cryosup: 31, threshold: 10, status: 'low' },
+  { type: 'B+', units: 9,  ffp: 140, cryo: 42,  cryosup: 20, threshold: 10, status: 'low' },
+  { type: 'AB+', units: 4, ffp: 40,  cryo: 8,   cryosup: 4,  threshold: 5,  status: 'critical' },
+  { type: 'O-', units: 4,  ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 5,  status: 'critical' },
+  { type: 'A-', units: 2,  ffp: 0,   cryo: 1,   cryosup: 0,  threshold: 3,  status: 'critical' },
+  { type: 'B-', units: 1,  ffp: 1,   cryo: 0,   cryosup: 0,  threshold: 3,  status: 'critical' },
+  { type: 'AB-', units: 1, ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 2,  status: 'critical' }
 ];
 
 const initialRequests = [
@@ -259,6 +262,12 @@ export const useBloodStore = create(
         }));
       },
 
+      // ─── Registry Operations ─────────────────────────────────────────────
+      addDonor: (newDonor) => {
+        set((state) => ({ donors: [newDonor, ...state.donors] }));
+      },
+
+
       // ─── Distribution & Equity Allocation ───────────────────────────────
       getEquityAllocations: () => {
         const { inventory, hospitals, forecastData } = get();
@@ -363,6 +372,35 @@ export const useBloodStore = create(
             req.refNo === refNo ? { ...req, status, statusNote } : req
           )
         }));
+      },
+
+      rejectRequest: (refNo) => {
+        set((state) => ({
+          bloodRequests: state.bloodRequests.map(req => req.refNo === refNo ? { ...req, status: 'Rejected' } : req)
+        }));
+      },
+
+      approveRequest: (refNo) => {
+        set((state) => {
+          const req = state.bloodRequests.find(r => r.refNo === refNo);
+          if (!req) return state;
+          
+          // Decrement inventory
+          const newInventory = state.inventory.map(item => {
+            const targetType = req.patientBloodType || req.bloodType;
+            if (item.type === targetType) {
+              const newUnits = Math.max(0, item.units - req.units);
+              const status = newUnits < item.threshold ? 'critical' : newUnits === item.threshold ? 'low' : 'safe';
+              return { ...item, units: newUnits, status };
+            }
+            return item;
+          });
+
+          return {
+            bloodRequests: state.bloodRequests.map(r => r.refNo === refNo ? { ...r, status: 'Approved' } : r),
+            inventory: newInventory
+          };
+        });
       },
 
       // ─── Inventory ──────────────────────────────────────────────────────
