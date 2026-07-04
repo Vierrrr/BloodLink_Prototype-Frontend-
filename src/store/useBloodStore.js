@@ -4,48 +4,68 @@ import { persist } from 'zustand/middleware';
 const initialDonors = [
   // ── Sample Dataset: Donor Registration ──
   { 
-    id: 'D001', name: 'Donor 1', sex: 'Male', civilStatus: 'Single', dob: '1998-05-12', 
-    bloodType: 'O+', address: 'Buhangin', donationDate: '2025-01-25', status: 'Regular', 
-    lastDonation: '2024-06-15', remarks: 'Eligible', phone: '+63 917 111 1111', distance: '1.2 km', totalDonations: 4 
+    id: 'D001', name: 'Juan P. Dela Cruz', sex: 'Male', civilStatus: 'Single', dob: '1998-05-12', 
+    bloodType: 'O+', address: 'Buhangin, Davao City', donationDate: '2026-03-10', status: 'Regular', 
+    lastDonation: '2026-03-10', remarks: 'Eligible', phone: '+63 917 111 1111', distance: '1.2 km', totalDonations: 4 
   },
   { 
-    id: 'D002', name: 'Donor 2', sex: 'Female', civilStatus: 'Married', dob: '1992-09-08', 
-    bloodType: 'A+', address: 'Matina', donationDate: '2025-02-02', status: 'New', 
-    lastDonation: '2025-02-02', remarks: 'Eligible', phone: '+63 917 222 2222', distance: '3.4 km', totalDonations: 1 
+    id: 'D002', name: 'Maria A. Santos', sex: 'Female', civilStatus: 'Married', dob: '1992-09-08', 
+    bloodType: 'A+', address: 'Matina, Davao City', donationDate: '2026-06-15', status: 'New', 
+    lastDonation: '2026-06-15', remarks: 'Eligible', phone: '+63 917 222 2222', distance: '3.4 km', totalDonations: 1 
   },
   { 
-    id: 'D003', name: 'Donor 3', sex: 'Male', civilStatus: '—', dob: '—', 
-    bloodType: 'B-', address: '—', donationDate: '2025-02-10', status: 'Lapsed', 
-    lastDonation: '2024-07-08', remarks: 'Eligible', phone: '+63 917 333 3333', distance: '5.1 km', totalDonations: 2 
+    id: 'D003', name: 'Robert L. Tan', sex: 'Male', civilStatus: 'Single', dob: '1988-12-04', 
+    bloodType: 'B-', address: 'Talomo, Davao City', donationDate: '2026-05-20', status: 'Regular', 
+    lastDonation: '2026-05-20', remarks: 'Eligible', phone: '+63 917 333 3333', distance: '5.1 km', totalDonations: 2 
   },
   { 
-    id: 'D004', name: 'Donor 4', sex: 'Female', civilStatus: 'Single', dob: '2000-03-16', 
-    bloodType: 'AB+', address: 'Mintal', donationDate: '2025-02-15', status: 'Regular', 
-    lastDonation: '2024-09-10', remarks: 'Eligible', phone: '+63 917 444 4444', distance: '8.2 km', totalDonations: 5 
+    id: 'D004', name: 'Sarah G. Cruz', sex: 'Female', civilStatus: 'Single', dob: '2000-03-16', 
+    bloodType: 'AB+', address: 'Mintal, Davao City', donationDate: '2026-04-05', status: 'Regular', 
+    lastDonation: '2026-04-05', remarks: 'Eligible', phone: '+63 917 444 4444', distance: '8.2 km', totalDonations: 5 
+  },
+  { 
+    id: 'D005', name: 'Joseph M. Castro', sex: 'Male', civilStatus: 'Single', dob: '1995-07-22', 
+    bloodType: 'O-', address: 'Agdao, Davao City', donationDate: '2026-01-15', status: 'Regular', 
+    lastDonation: '2026-01-15', remarks: 'Eligible', phone: '+63 917 888 8888', distance: '2.5 km', totalDonations: 8 
+  },
+  { 
+    id: 'D006', name: 'Elena F. Diaz', sex: 'Female', civilStatus: 'Married', dob: '1990-11-30', 
+    bloodType: 'A-', address: 'Lanang, Davao City', donationDate: '2026-06-25', status: 'Regular', 
+    lastDonation: '2026-06-25', remarks: 'Eligible', phone: '+63 917 999 9999', distance: '4.1 km', totalDonations: 3 
+  },
+  { 
+    id: 'D007', name: 'Mark Anthony V. Reyes', sex: 'Male', civilStatus: 'Single', dob: '1993-02-14', 
+    bloodType: 'B-', address: 'Toril, Davao City', donationDate: '2026-02-28', status: 'Regular', 
+    lastDonation: '2026-02-28', remarks: 'Eligible', phone: '+63 917 777 7777', distance: '12.4 km', totalDonations: 4 
+  },
+  { 
+    id: 'D008', name: 'Patricia J. Gomez', sex: 'Female', civilStatus: 'Single', dob: '1997-08-19', 
+    bloodType: 'O-', address: 'Cabantian, Davao City', donationDate: '2026-05-01', status: 'Regular', 
+    lastDonation: '2026-05-01', remarks: 'Eligible', phone: '+63 917 654 3210', distance: '6.7 km', totalDonations: 2 
   },
   // ── Sample Dataset: Deferred Donors ──
   { 
-    id: 'D014', name: 'Donor 14', sex: 'Male', 
-    bloodType: 'O+', address: 'Davao City', donationDate: '2025-02-05', status: 'Deferred', 
-    lastDonation: '2025-02-05', remarks: 'Low Hemoglobin (Temporary)', phone: '+63 917 555 5555', distance: '2.0 km', totalDonations: 3 
+    id: 'D014', name: 'Miguel S. Alcantara', sex: 'Male', 
+    bloodType: 'O+', address: 'Davao City', donationDate: '2026-02-05', status: 'Deferred', 
+    lastDonation: '2026-02-05', remarks: 'Low Hemoglobin (Temporary)', phone: '+63 917 555 5555', distance: '2.0 km', totalDonations: 3 
   },
   { 
-    id: 'D022', name: 'Donor 22', sex: 'Female', 
-    bloodType: 'A-', address: 'Davao City', donationDate: '2025-02-10', status: 'Deferred', 
-    lastDonation: '2025-02-10', remarks: 'Recent Tattoo (Temporary)', phone: '+63 917 666 6666', distance: '4.5 km', totalDonations: 1 
+    id: 'D022', name: 'Clarisse D. Villamin', sex: 'Female', 
+    bloodType: 'A-', address: 'Davao City', donationDate: '2026-02-10', status: 'Deferred', 
+    lastDonation: '2026-02-10', remarks: 'Recent Tattoo (Temporary)', phone: '+63 917 666 6666', distance: '4.5 km', totalDonations: 1 
   }
 ];
 
 const initialInventory = [
   // ── Sample Dataset: Blood Components ──
-  { type: 'O+', units: 25, ffp: 293, cryo: 113, cryosup: 51, threshold: 15, status: 'safe' },
-  { type: 'A+', units: 9,  ffp: 160, cryo: 85,  cryosup: 31, threshold: 10, status: 'low' },
-  { type: 'B+', units: 9,  ffp: 140, cryo: 42,  cryosup: 20, threshold: 10, status: 'low' },
-  { type: 'AB+', units: 4, ffp: 40,  cryo: 8,   cryosup: 4,  threshold: 5,  status: 'critical' },
-  { type: 'O-', units: 4,  ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 5,  status: 'critical' },
-  { type: 'A-', units: 2,  ffp: 0,   cryo: 1,   cryosup: 0,  threshold: 3,  status: 'critical' },
-  { type: 'B-', units: 1,  ffp: 1,   cryo: 0,   cryosup: 0,  threshold: 3,  status: 'critical' },
-  { type: 'AB-', units: 1, ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 2,  status: 'critical' }
+  { type: 'O+', units: 25, platelets: 180, ffp: 293, cryo: 113, cryosup: 51, threshold: 15, status: 'safe' },
+  { type: 'A+', units: 9,  platelets: 64,  ffp: 160, cryo: 85,  cryosup: 31, threshold: 10, status: 'low' },
+  { type: 'B+', units: 9,  platelets: 52,  ffp: 140, cryo: 42,  cryosup: 20, threshold: 10, status: 'low' },
+  { type: 'AB+', units: 4, platelets: 25,  ffp: 40,  cryo: 8,   cryosup: 4,  threshold: 5,  status: 'critical' },
+  { type: 'O-', units: 4,  platelets: 15,  ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 5,  status: 'critical' },
+  { type: 'A-', units: 2,  platelets: 10,  ffp: 0,   cryo: 1,   cryosup: 0,  threshold: 3,  status: 'critical' },
+  { type: 'B-', units: 1,  platelets: 8,   ffp: 1,   cryo: 0,   cryosup: 0,  threshold: 3,  status: 'critical' },
+  { type: 'AB-', units: 1, platelets: 5,   ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 2,  status: 'critical' }
 ];
 
 const initialRequests = [
@@ -108,9 +128,12 @@ const initialHospitals = [
 ];
 
 const initialUsers = [
-  { id: 'USR-001', name: 'Admin User', role: 'System Admin', email: 'admin@bloodlink.dvo', status: 'Active' },
-  { id: 'USR-002', name: 'Dr. Juan Dela Cruz', role: 'Hospital Staff', email: 'juan@spmc.ph', status: 'Active' },
-  { id: 'USR-003', name: 'Nurse Joy', role: 'Phlebotomist', email: 'joy@redcross.ph', status: 'Active' }
+  { id: 'USR-001', name: 'DOH Super Admin', role: 'Super Admin', email: 'superadmin@bloodlink.dvo', status: 'Active', hospitalId: null },
+  { id: 'USR-002', name: 'DOH Medical Officer IV', role: 'Administrator', email: 'admin@bloodlink.dvo', status: 'Active', hospitalId: null },
+  { id: 'USR-003', name: 'Nurse Joy Cruz', role: 'Registry Staff', email: 'registry@bloodlink.dvo', status: 'Active', hospitalId: null },
+  { id: 'USR-004', name: 'RMT Mark Lopez', role: 'Blood Bank Staff', email: 'bloodbank@bloodlink.dvo', status: 'Active', hospitalId: null },
+  { id: 'USR-005', name: 'SNBC Issuance Officer', role: 'Issuance Personnel', email: 'issuance@bloodlink.dvo', status: 'Active', hospitalId: null },
+  { id: 'USR-006', name: 'Dr. Roberto Santos', role: 'Hospital User', email: 'hospital@bloodlink.dvo', status: 'Active', hospitalId: 'HOSP-001' }
 ];
 
 // 8‑week historical + 4 predicted weeks with upper/lower confidence bounds
@@ -228,6 +251,41 @@ export const useBloodStore = create(
         phone: '+63 917 123 4567',
         bloodType: 'O-',
         address: 'Brgy. Buhangin, Davao City'
+      },
+      authSystemUser: {
+        id: 'USR-002',
+        name: 'DOH Medical Officer IV',
+        role: 'Administrator',
+        email: 'admin@bloodlink.dvo',
+        hospitalId: null
+      },
+      loginSystemUser: (email) => {
+        const emailLower = email.toLowerCase();
+        const found = get().users.find(u => u.email.toLowerCase() === emailLower);
+        if (found) {
+          set({ authSystemUser: found });
+          return found;
+        }
+        // Fallback for demo flexibility
+        let user = null;
+        if (emailLower.includes('superadmin')) {
+          user = { id: 'USR-001', name: 'DOH Super Admin', role: 'Super Admin', email: 'superadmin@bloodlink.dvo', hospitalId: null };
+        } else if (emailLower.includes('admin')) {
+          user = { id: 'USR-002', name: 'DOH Medical Officer IV', role: 'Administrator', email: 'admin@bloodlink.dvo', hospitalId: null };
+        } else if (emailLower.includes('registry')) {
+          user = { id: 'USR-003', name: 'Nurse Joy Cruz', role: 'Registry Staff', email: 'registry@bloodlink.dvo', hospitalId: null };
+        } else if (emailLower.includes('bloodbank') || emailLower.includes('bank')) {
+          user = { id: 'USR-004', name: 'RMT Mark Lopez', role: 'Blood Bank Staff', email: 'bloodbank@bloodlink.dvo', hospitalId: null };
+        } else if (emailLower.includes('issuance')) {
+          user = { id: 'USR-005', name: 'SNBC Issuance Officer', role: 'Issuance Personnel', email: 'issuance@bloodlink.dvo', hospitalId: null };
+        } else if (emailLower.includes('hospital') || emailLower.includes('spmc')) {
+          user = { id: 'USR-006', name: 'Dr. Roberto Santos', role: 'Hospital User', email: 'hospital@bloodlink.dvo', hospitalId: 'HOSP-001' };
+        }
+        if (user) {
+          set({ authSystemUser: user });
+          return user;
+        }
+        return null;
       },
       accountFlagged: false,
       arrivedAtFacility: false,
@@ -354,6 +412,19 @@ export const useBloodStore = create(
         return id;
       },
 
+      updateDonorMedical: (id, medicalForm) => {
+        set((state) => ({
+          donors: state.donors.map(d => d.id === id ? { ...d, ...medicalForm } : d)
+        }));
+      },
+
+      addUser: (userForm) => {
+        const id = 'USR-' + String(Math.floor(Math.random() * 900) + 100);
+        const newUser = { id, status: 'Active', ...userForm };
+        set((state) => ({ users: [...state.users, newUser] }));
+        return newUser;
+      },
+
       // ─── Blood Requests ─────────────────────────────────────────────────
       addBloodRequest: (reqForm) => {
         const refNo = 'REQ-' + Math.floor(1000 + Math.random() * 9000);
@@ -452,6 +523,13 @@ export const useBloodStore = create(
         set({ mobilizeFlowStep: 0, scanProgress: 0, scannedCount: 0, matchedCount: 0, criteriaChecked: 0, totalConfirmed: 12, currentPhase: 1, smsLogs: [] });
       }
     }),
-    { name: 'bloodlink-dvo-store' }
+    { 
+      name: 'bloodlink-dvo-store',
+      version: 3,
+      migrate: () => {
+        // On version mismatch, return undefined so the store resets to initialState
+        return undefined;
+      }
+    }
   )
 );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useBloodStore } from '../store/useBloodStore';
 import {
   Zap, Bell, ArrowRight, Activity, MapPin, Database,
   X, Phone, Clock, ChevronRight, ChevronLeft, ChevronDown, Users, LogIn, User,
-  Droplets, Shield, Search, MessageSquare, FileText, Heart
+  Droplets, Shield, Search, MessageSquare, FileText, Heart, AlertTriangle
 } from 'lucide-react';
 
 // ── Logos ──
@@ -299,36 +300,53 @@ export default function Home() {
   // Login Form States
   const [loginRole, setLoginRole] = useState('admin');
   const [email, setEmail] = useState('admin@bloodlink.dvo');
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('pass123');
   const [loginError, setLoginError] = useState('');
+
+  const loginSystemUser = useBloodStore((state) => state.loginSystemUser);
 
   // Auto-fill emails based on role selection for easy prototype demoing
   const handleRoleChange = (role) => {
     setLoginRole(role);
     setLoginError('');
-    if (role === 'admin') {
+    if (role === 'superadmin') {
+      setEmail('superadmin@bloodlink.dvo');
+    } else if (role === 'admin') {
       setEmail('admin@bloodlink.dvo');
     } else if (role === 'registry') {
       setEmail('registry@bloodlink.dvo');
     } else if (role === 'bloodbank') {
       setEmail('bloodbank@bloodlink.dvo');
     } else if (role === 'issuance') {
+      setEmail('issuance@bloodlink.dvo');
+    } else if (role === 'hospital') {
       setEmail('hospital@bloodlink.dvo');
     }
   };
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setLoginError('Email and Password are required.');
+    if (!email) {
+      setLoginError('Email is required.');
+      return;
+    }
+
+    const authenticatedUser = loginSystemUser(email);
+    if (!authenticatedUser) {
+      setLoginError('Authentication failed. Role-associated email not recognized.');
       return;
     }
 
     setShowModal(false);
-    if (loginRole === 'admin') navigate('/admin/dashboard');
-    else if (loginRole === 'registry') navigate('/registry/dashboard');
-    else if (loginRole === 'bloodbank') navigate('/bloodbank/dashboard');
-    else if (loginRole === 'issuance') navigate('/issuance/dashboard');
+    if (authenticatedUser.role === 'Super Admin' || authenticatedUser.role === 'Administrator') {
+      navigate('/admin/dashboard');
+    } else if (authenticatedUser.role === 'Registry Staff') {
+      navigate('/registry/dashboard');
+    } else if (authenticatedUser.role === 'Blood Bank Staff') {
+      navigate('/bloodbank/dashboard');
+    } else if (authenticatedUser.role === 'Issuance Personnel' || authenticatedUser.role === 'Hospital User') {
+      navigate('/issuance/dashboard');
+    }
   };
 
   useEffect(() => {
@@ -525,31 +543,45 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Role Quick Selector */}
+              {/* Role Selection Tabs */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Select User Role</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <label className="block text-xs font-bold text-slate-700 mb-2">Select Portal Desk</label>
+                <div className="grid grid-cols-3 gap-1.5 bg-slate-100/70 border border-slate-200/50 p-1.5 rounded-xl text-[10px] font-bold">
                   {[
-                    { id: 'admin',     label: 'Admin',       icon: <Shield className="w-3.5 h-3.5" /> },
-                    { id: 'registry',  label: 'Registry',    icon: <FileText className="w-3.5 h-3.5" /> },
-                    { id: 'bloodbank', label: 'Blood Bank',  icon: <Database className="w-3.5 h-3.5" /> },
-                    { id: 'issuance',  label: 'Hospital',    icon: <Activity className="w-3.5 h-3.5" /> },
+                    { id: 'superadmin', label: 'Super Admin' },
+                    { id: 'admin', label: 'Admin' },
+                    { id: 'registry', label: 'Registry' },
+                    { id: 'bloodbank', label: 'Blood Bank' },
+                    { id: 'issuance', label: 'Issuance' },
+                    { id: 'hospital', label: 'Hospital' }
                   ].map(r => (
                     <button
                       key={r.id}
                       type="button"
                       onClick={() => handleRoleChange(r.id)}
-                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                      className={`py-1.5 rounded-lg transition-all border ${
                         loginRole === r.id
-                          ? 'border-[#C21C24] bg-rose-50/50 text-[#C21C24] font-bold shadow-sm'
-                          : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                          ? 'bg-white text-[#C21C24] border-slate-200/60 shadow-sm'
+                          : 'text-slate-500 border-transparent hover:bg-white/50'
                       }`}
                     >
-                      {r.icon}
-                      <span className="text-[10px] whitespace-nowrap">{r.label}</span>
+                      {r.label}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Helper Info Panel */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-500 leading-normal">
+                <span className="font-bold text-slate-800">Mock credentials:</span>
+                <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                  <li>Super Admin: <code className="font-mono text-rose-600">superadmin@bloodlink.dvo</code></li>
+                  <li>Admin: <code className="font-mono text-rose-600">admin@bloodlink.dvo</code></li>
+                  <li>Registry Staff: <code className="font-mono text-rose-600">registry@bloodlink.dvo</code></li>
+                  <li>Blood Bank Staff: <code className="font-mono text-rose-600">bloodbank@bloodlink.dvo</code></li>
+                  <li>Issuance Staff: <code className="font-mono text-rose-600">issuance@bloodlink.dvo</code></li>
+                  <li>Hospital Desk: <code className="font-mono text-rose-600">hospital@bloodlink.dvo</code> (SPMC)</li>
+                </ul>
               </div>
 
               {/* Email */}
@@ -568,14 +600,13 @@ export default function Home() {
               {/* Password */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none transition-all"
-                  placeholder="••••••••"
-                />
+                 <input
+                   type="password"
+                   value={password}
+                   onChange={(e) => setPassword(e.target.value)}
+                   className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none transition-all"
+                   placeholder="pass123"
+                 />
               </div>
 
               {/* Submit Button */}

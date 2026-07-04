@@ -48,6 +48,7 @@ export default function AdminDashboard() {
   const distributionLog = useBloodStore((state) => state.distributionLog);
   const accountFlagged = useBloodStore((state) => state.accountFlagged);
   const arrivedAtFacility = useBloodStore((state) => state.arrivedAtFacility);
+  const authSystemUser = useBloodStore((state) => state.authSystemUser);
   const updateBloodRequestStatus = useBloodStore((state) => state.updateBloodRequestStatus);
   const updateInventoryUnits = useBloodStore((state) => state.updateInventoryUnits);
   const setFlaggedStatus = useBloodStore((state) => state.setFlaggedStatus);
@@ -58,6 +59,12 @@ export default function AdminDashboard() {
   const recordDistribution = useBloodStore((state) => state.recordDistribution);
   const getLastDistributionByBloodType = useBloodStore((state) => state.getLastDistributionByBloodType);
   const generateNextWeeks = useBloodStore((state) => state.generateNextWeeks);
+  const addUser = useBloodStore((state) => state.addUser);
+
+  // Role Detection
+  const adminRole   = authSystemUser?.role || 'Administrator';
+  const isSuperAdmin = adminRole === 'Super Admin';
+  const isAdministrator = adminRole === 'Administrator';
 
   // Mobilization Simulation Hooks
   const mobilizeFlowStep = useBloodStore((state) => state.mobilizeFlowStep);
@@ -106,6 +113,14 @@ export default function AdminDashboard() {
 
   // SMS Recall confirmation modal
   const [showSmsConfirmModal, setShowSmsConfirmModal] = useState(false);
+
+  // Reports local tab
+  const [reportsTab, setReportsTab] = useState('stock');
+
+  // Super Admin: Add System User modal
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [addUserForm, setAddUserForm] = useState({ name: '', role: 'Registry Staff', email: '', hospitalId: '' });
+  const [userSaved, setUserSaved] = useState(false);
 
   // Map References
   const mobMapRef = useRef(null);
@@ -891,43 +906,96 @@ export default function AdminDashboard() {
 
           {/* TAB: USER MANAGEMENT */}
           {tab === 'users' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 text-sm tracking-tight">System Access Privileges</h3>
-                <button className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
-                  <Plus className="w-4 h-4" /> Register New User
-                </button>
+            <div className="space-y-4 fade-in">
+
+              {/* RBAC Role Notice */}
+              <div className="bg-slate-900 text-white rounded-xl p-4 flex items-start gap-3">
+                <Lock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-sm">Role-Based Access Control (RBAC)</p>
+                  <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">
+                    {isSuperAdmin
+                      ? 'You are logged in as Super Admin. You can manage all system users including Administrator accounts and audit logs.'
+                      : 'You are logged in as Administrator. You can verify accounts and create Hospital User logins. Super Admin accounts can only be managed by Super Admins.'}
+                  </p>
+                </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                    <tr>
-                      <th className="px-6 py-3 text-left">User ID</th>
-                      <th className="px-6 py-3 text-left">Name</th>
-                      <th className="px-6 py-3 text-left">Role</th>
-                      <th className="px-6 py-3 text-left">Email Contact</th>
-                      <th className="px-6 py-3 text-left">Account Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                    {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{u.id}</td>
-                        <td className="px-6 py-4 font-bold text-slate-900">{u.name}</td>
-                        <td className="px-6 py-4 text-blue-600">{u.role}</td>
-                        <td className="px-6 py-4 text-slate-500 font-mono">{u.email}</td>
-                        <td className="px-6 py-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 border-emerald-100 text-emerald-700">
-                            {u.status}
-                          </span>
-                        </td>
+
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">System Access Privileges</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{users.length} system users registered</p>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => setShowAddUserModal(true)}
+                      className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm cursor-pointer">
+                      <Plus className="w-4 h-4" /> Add System User
+                    </button>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 text-left">User ID</th>
+                        <th className="px-6 py-3 text-left">Name</th>
+                        <th className="px-6 py-3 text-left">Role</th>
+                        <th className="px-6 py-3 text-left">Email Contact</th>
+                        <th className="px-6 py-3 text-left">Account Status</th>
+                        {isSuperAdmin && <th className="px-6 py-3 text-left">Actions</th>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                      {users.map((u) => {
+                        const roleColors = {
+                          'Super Admin':         'bg-purple-50 border-purple-200 text-purple-700',
+                          'Administrator':       'bg-blue-50 border-blue-200 text-blue-700',
+                          'Registry Staff':      'bg-emerald-50 border-emerald-200 text-emerald-700',
+                          'Blood Bank Staff':    'bg-rose-50 border-rose-100 text-[#C21C24]',
+                          'Issuance Personnel':  'bg-amber-50 border-amber-200 text-amber-700',
+                          'Hospital User':       'bg-slate-50 border-slate-200 text-slate-600',
+                        };
+                        const roleCls = roleColors[u.role] || 'bg-slate-50 border-slate-200 text-slate-600';
+                        const isSuperAdminUser = u.role === 'Super Admin';
+                        const canEdit = isSuperAdmin || (!isSuperAdminUser && isAdministrator);
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-400">{u.id}</td>
+                            <td className="px-6 py-4 font-bold text-slate-900">{u.name}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${roleCls}`}>
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-slate-500 font-mono">{u.email}</td>
+                            <td className="px-6 py-4">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 border-emerald-100 text-emerald-700">
+                                {u.status}
+                              </span>
+                            </td>
+                            {isSuperAdmin && (
+                              <td className="px-6 py-4">
+                                {canEdit ? (
+                                  <button className="text-[10px] font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-2 py-0.5 rounded hover:bg-slate-50 transition-colors">
+                                    Edit
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-300">Protected</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
+
 
           {/* TAB: DONOR MANAGEMENT */}
           {tab === 'donors' && (
@@ -981,13 +1049,17 @@ export default function AdminDashboard() {
                           <td className="px-6 py-3.5"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{d.bloodType}</span></td>
                           <td className="px-6 py-3.5 text-slate-500 font-mono font-normal">{d.phone}</td>
                           <td className="px-6 py-3.5">
-                            {d.totalDonations > 1 ? (
-                              <span className="text-emerald-600 font-bold">Regular</span>
-                            ) : d.totalDonations === 1 ? (
-                              <span className="text-blue-600 font-bold">New</span>
-                            ) : (
-                              <span className="text-slate-400 font-bold">Lapsed</span>
-                            )}
+                            {(() => {
+                              const daysSince = Math.floor((new Date() - new Date(d.lastDonation)) / (1000 * 60 * 60 * 24));
+                              if (daysSince >= 90) {
+                                return <span className="text-amber-650 bg-amber-50 px-2 py-0.5 border border-amber-100 rounded text-[10px] font-bold">Lapsed</span>;
+                              }
+                              return d.totalDonations > 1 ? (
+                                <span className="text-emerald-600 font-bold">Regular</span>
+                              ) : (
+                                <span className="text-blue-600 font-bold">New</span>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-3.5">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
@@ -1629,23 +1701,170 @@ export default function AdminDashboard() {
           })()}
 
           {/* TAB: REPORTS */}
-          {tab === 'reports' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in p-6">
-              <h3 className="font-bold text-slate-900 text-sm tracking-tight mb-6">Operational Reports</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <button className="p-5 border border-slate-200 rounded-xl text-left hover:border-[#C21C24] hover:shadow-md transition bg-slate-50">
-                  <Activity className="w-6 h-6 text-[#C21C24] mb-3" />
-                  <h4 className="font-bold text-slate-900 text-xs">Inventory & Issuance Report</h4>
-                  <p className="text-[10px] text-slate-500 mt-1">Download monthly stock levels and hospital distributions.</p>
-                </button>
-                <button className="p-5 border border-slate-200 rounded-xl text-left hover:border-[#C21C24] hover:shadow-md transition bg-slate-50">
-                  <Users className="w-6 h-6 text-[#C21C24] mb-3" />
-                  <h4 className="font-bold text-slate-900 text-xs">Donor Recall Analytics</h4>
-                  <p className="text-[10px] text-slate-500 mt-1">Export SMS response rates and return donation metrics.</p>
-                </button>
+          {tab === 'reports' && (() => {
+            const mbdData = [
+              { venue: 'Davao City Hall', date: '2026-06-20', target: 100, collected: 85, deferrals: 15, ncu: 1, ns: 84 },
+              { venue: 'Gaisano Mall Bajada', date: '2026-06-15', target: 50, collected: 48, deferrals: 8, ncu: 0, ns: 48 },
+              { venue: 'SM City Davao', date: '2026-06-10', target: 80, collected: 82, deferrals: 12, ncu: 2, ns: 80 },
+              { venue: 'SPMC Compound Campaign', date: '2026-06-05', target: 120, collected: 115, deferrals: 18, ncu: 3, ns: 112 },
+            ];
+
+            const totalMbdCollected = mbdData.reduce((sum, item) => sum + item.collected, 0);
+            const totalMbdTarget = mbdData.reduce((sum, item) => sum + item.target, 0);
+            const avgMbdTurnout = Math.round((totalMbdCollected / totalMbdTarget) * 100);
+
+            return (
+              <div className="space-y-4 fade-in">
+                {/* Reports Header & Toggle */}
+                <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setReportsTab('stock')}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        reportsTab === 'stock'
+                          ? 'bg-[#C21C24] text-white shadow-sm'
+                          : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                      }`}
+                    >
+                      Daily Stock Summary
+                    </button>
+                    <button
+                      onClick={() => setReportsTab('mbd')}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        reportsTab === 'mbd'
+                          ? 'bg-[#C21C24] text-white shadow-sm'
+                          : 'bg-slate-50 border border-slate-200 text-slate-655 hover:bg-slate-100'
+                      }`}
+                    >
+                      MBD Collections Report
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => window.print()}
+                    className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Print / Export PDF
+                  </button>
+                </div>
+
+                {/* Report Content */}
+                {reportsTab === 'stock' ? (
+                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6 print:border-none print:shadow-none">
+                    {/* Header */}
+                    <div className="border-b border-slate-100 pb-4 text-center">
+                      <h3 className="font-extrabold text-slate-900 text-base">SNBC DAILY BLOOD STOCK REPORT</h3>
+                      <p className="text-[10px] text-slate-400 font-mono mt-1">GENERATED ON: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | SYSTEM: BLOODLINK DVO</p>
+                    </div>
+
+                    {/* Stock Overview Table */}
+                    <div className="overflow-x-auto border border-slate-150 rounded-lg">
+                      <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50 text-[10px] font-bold text-slate-450 uppercase tracking-wider text-left">
+                          <tr>
+                            <th className="px-6 py-3">Blood Type</th>
+                            <th className="px-6 py-3 text-center">PRBC (bags)</th>
+                            <th className="px-6 py-3 text-center">Platelets (bags)</th>
+                            <th className="px-6 py-3 text-center">FFP (bags)</th>
+                            <th className="px-6 py-3 text-center">Cryo (bags)</th>
+                            <th className="px-6 py-3 text-center">CryoSup (bags)</th>
+                            <th className="px-6 py-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                          {inventory.map((item) => (
+                            <tr key={item.type} className="hover:bg-slate-50/30">
+                              <td className="px-6 py-4 font-black text-slate-900 font-mono">{item.type}</td>
+                              <td className="px-6 py-4 text-center font-bold text-slate-800 font-mono">{item.units}</td>
+                              <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.platelets || 0}</td>
+                              <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.ffp || 0}</td>
+                              <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.cryo || 0}</td>
+                              <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.cryosup || 0}</td>
+                              <td className="px-6 py-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  item.status === 'safe'
+                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                    : item.status === 'low'
+                                      ? 'bg-amber-50 border-amber-100 text-amber-700'
+                                      : 'bg-rose-50 border-rose-100 text-[#C21C24]'
+                                }`}>
+                                  {item.status.toUpperCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-slate-50 font-bold border-t border-slate-200">
+                            <td className="px-6 py-4 text-slate-800">TOTAL BAGS</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.units||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.platelets||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.ffp||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.cryo||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.cryosup||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-500">—</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6 print:border-none print:shadow-none">
+                    {/* Header */}
+                    <div className="border-b border-slate-100 pb-4 text-center">
+                      <h3 className="font-extrabold text-slate-900 text-base">MOBILE BLOOD DONATION (MBD) COLLECTIONS REPORT</h3>
+                      <p className="text-[10px] text-slate-400 font-mono mt-1">GENERATED ON: {new Date().toLocaleDateString()} | SOURCE: REGISTRY & LAB SYNC</p>
+                    </div>
+
+                    {/* Stats summary */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Total Collected Bags</p>
+                        <p className="text-xl font-extrabold text-slate-900 font-mono">{totalMbdCollected}</p>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Average Turnout Rate</p>
+                        <p className="text-xl font-extrabold text-[#C21C24] font-mono">{avgMbdTurnout}%</p>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Total Deferral Records</p>
+                        <p className="text-xl font-extrabold text-amber-600 font-mono">{mbdData.reduce((s,i)=>s+i.deferrals,0)}</p>
+                      </div>
+                    </div>
+
+                    {/* Camps Table */}
+                    <div className="overflow-x-auto border border-slate-150 rounded-lg">
+                      <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50 text-[10px] font-bold text-slate-450 uppercase tracking-wider text-left">
+                          <tr>
+                            <th className="px-6 py-3">MBD Venue / Campaign</th>
+                            <th className="px-6 py-3 text-center">Date</th>
+                            <th className="px-6 py-3 text-center">Target (bags)</th>
+                            <th className="px-6 py-3 text-center">Collected (bags)</th>
+                            <th className="px-6 py-3 text-center">Turnout</th>
+                            <th className="px-6 py-3 text-center">Deferrals</th>
+                            <th className="px-6 py-3 text-center">Serology Positive (NCU)</th>
+                            <th className="px-6 py-3 text-center">Serology Negative (NS)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                          {mbdData.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/30">
+                              <td className="px-6 py-4 font-bold text-slate-900">{item.venue}</td>
+                              <td className="px-6 py-4 text-center text-slate-500 font-mono">{item.date}</td>
+                              <td className="px-6 py-4 text-center font-bold text-slate-600 font-mono">{item.target}</td>
+                              <td className="px-6 py-4 text-center font-bold text-slate-800 font-mono">{item.collected}</td>
+                              <td className="px-6 py-4 text-center font-bold text-slate-900 font-mono">{Math.round((item.collected/item.target)*100)}%</td>
+                              <td className="px-6 py-4 text-center text-amber-600 font-mono">{item.deferrals}</td>
+                              <td className="px-6 py-4 text-center text-rose-600 font-mono">{item.ncu}</td>
+                              <td className="px-6 py-4 text-center text-emerald-700 font-mono">{item.ns}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>
@@ -1804,6 +2023,74 @@ export default function AdminDashboard() {
                   }}
                   className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-1.5"
                 ><Send className="w-3.5 h-3.5" /> Confirm Dispatch</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD SYSTEM USER MODAL */}
+      {showAddUserModal && isSuperAdmin && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => { setShowAddUserModal(false); setUserSaved(false); }}>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md modal-in" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white rounded-t-2xl">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrative Tool</p>
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Register New System User</h4>
+            </div>
+            <div className="p-6 space-y-4">
+              {userSaved && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-2.5 rounded-lg text-xs font-bold text-center">
+                  User registered successfully!
+                </div>
+              )}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Full Name</label>
+                <input type="text" value={addUserForm.name} onChange={e => setAddUserForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Dr. Jane Doe" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Email Address</label>
+                <input type="email" value={addUserForm.email} onChange={e => setAddUserForm(f => ({ ...f, email: e.target.value }))} placeholder="jane.doe@bloodlink.dvo" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Assigned Role</label>
+                <select value={addUserForm.role} onChange={e => setAddUserForm(f => ({ ...f, role: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                  <option>Registry Staff</option>
+                  <option>Blood Bank Staff</option>
+                  <option>Issuance Personnel</option>
+                  <option>Hospital User</option>
+                  <option>Administrator</option>
+                  <option>Super Admin</option>
+                </select>
+              </div>
+              {addUserForm.role === 'Hospital User' && (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Requesting Hospital / Facility</label>
+                  <select value={addUserForm.hospitalId} onChange={e => setAddUserForm(f => ({ ...f, hospitalId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                    <option value="">Select hospital...</option>
+                    {hospitals.map(h => (
+                      <option key={h.id} value={h.id}>{h.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex gap-2.5 text-xs font-semibold pt-2">
+                <button
+                  onClick={() => { setShowAddUserModal(false); setUserSaved(false); }}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-655 rounded-lg hover:bg-slate-100 transition"
+                >Cancel</button>
+                <button
+                  onClick={() => {
+                    if (!addUserForm.name.trim() || !addUserForm.email.trim()) return alert('Name and email are required.');
+                    addUser(addUserForm);
+                    setUserSaved(true);
+                    setAddUserForm({ name: '', role: 'Registry Staff', email: '', hospitalId: '' });
+                    setTimeout(() => {
+                      setUserSaved(false);
+                      setShowAddUserModal(false);
+                    }, 1200);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-purple-650 text-white rounded-lg hover:bg-purple-700 transition shadow-sm"
+                >Register User</button>
               </div>
             </div>
           </div>

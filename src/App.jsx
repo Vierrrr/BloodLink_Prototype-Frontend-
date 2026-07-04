@@ -9,6 +9,21 @@ import AdminDashboard from './pages/AdminDashboard';
 import RegistryDashboard from './pages/RegistryDashboard';
 import BloodBankDashboard from './pages/BloodBankDashboard';
 import IssuanceDashboard from './pages/IssuanceDashboard';
+// ── One-time stale store cleanup ──────────────────────────────────────────
+// Clear old localStorage entries that don't have a version field.
+// Zustand persist v3 will create a fresh entry with the correct version.
+try {
+  const raw = localStorage.getItem('bloodlink-dvo-store');
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    if (!parsed?.version || parsed.version < 3) {
+      localStorage.removeItem('bloodlink-dvo-store');
+    }
+  }
+} catch (_) {
+  localStorage.removeItem('bloodlink-dvo-store');
+}
+
 export default function App() {
   return (
     <Router>
