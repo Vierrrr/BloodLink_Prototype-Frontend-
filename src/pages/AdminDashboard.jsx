@@ -31,7 +31,8 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
-  LogOut
+  LogOut,
+  Calendar
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -59,7 +60,15 @@ export default function AdminDashboard() {
   const recordDistribution = useBloodStore((state) => state.recordDistribution);
   const getLastDistributionByBloodType = useBloodStore((state) => state.getLastDistributionByBloodType);
   const generateNextWeeks = useBloodStore((state) => state.generateNextWeeks);
+  const generateGranularForecast = useBloodStore((state) => state.generateGranularForecast);
+  const granularForecasts = useBloodStore((state) => state.granularForecasts) ?? [];
   const addUser = useBloodStore((state) => state.addUser);
+  const recommendations = useBloodStore((state) => state.recommendations);
+  const approveRecommendation = useBloodStore((state) => state.approveRecommendation);
+  const rejectRecommendation = useBloodStore((state) => state.rejectRecommendation);
+  const auditLogs = useBloodStore((state) => state.auditLogs);
+  const donationEvents = useBloodStore((state) => state.donationEvents);
+  const addDonationEvent = useBloodStore((state) => state.addDonationEvent);
 
   // Role Detection
   const adminRole   = authSystemUser?.role || 'Administrator';
@@ -86,11 +95,21 @@ export default function AdminDashboard() {
 
   // Local UI State
   const [tab, setTab] = useState('dashboard');
+
+  // Donation Events (Table 6) modal state
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventForm, setEventForm] = useState({
+    province: 'Davao del Sur',
+    cityMunicipality: 'Davao City',
+    barangayOrganization: '',
+    eventDate: new Date().toISOString().slice(0, 10)
+  });
+  const [eventSaved, setEventSaved] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState(null);
   // Hospital CRUD state
   const [showHospitalModal, setShowHospitalModal] = useState(false);
   const [editingHospital, setEditingHospital] = useState(null);
-  const [hospitalForm, setHospitalForm] = useState({ name: '', type: 'Government', contact: '', phone: '', email: '', address: '' });
+  const [hospitalForm, setHospitalForm] = useState({ name: '', type: 'Government', contact: '', phone: '', email: '', address: '', registrationStatus: 'Active' });
   // Distribution history filter
   const [distHospitalFilter, setDistHospitalFilter] = useState('ALL');
   const [emergencyBloodType, setEmergencyBloodType] = useState(null);
@@ -102,6 +121,12 @@ export default function AdminDashboard() {
   const [reEligibilityScanning, setReEligibilityScanning] = useState(false);
   const [reEligibilityComplete, setReEligibilityComplete] = useState(false);
   const [reEligibilityCount, setReEligibilityCount] = useState(0);
+
+  // Granular Forecast filters
+  const [fcHospital,   setFcHospital]   = useState('ALL');
+  const [fcBloodType,  setFcBloodType]  = useState('ALL');
+  const [fcComponent,  setFcComponent]  = useState('ALL');
+  const [fcWeeks,      setFcWeeks]      = useState(4);
 
   // Distribution History detail modal
   const [selectedDistLog, setSelectedDistLog] = useState(null);
@@ -119,7 +144,11 @@ export default function AdminDashboard() {
 
   // Super Admin: Add System User modal
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [addUserForm, setAddUserForm] = useState({ name: '', role: 'Registry Staff', email: '', hospitalId: '' });
+  const [addUserForm, setAddUserForm] = useState({
+    firstName: '', lastName: '', email: '', passwordHash: '',
+    contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003',
+    status: 'Active', hospitalId: ''
+  });
   const [userSaved, setUserSaved] = useState(false);
 
   // Map References
@@ -144,6 +173,7 @@ export default function AdminDashboard() {
     distribution: 'Distribution Recommendation',
     recall: 'Donor Recall',
     reports: 'Reports Module',
+    audit_logs: 'Audit Logs (Table 18)',
     hospital_history: 'Distribution History',
     dist_record_detail: 'Distribution Record Detail'
   };
@@ -159,6 +189,7 @@ export default function AdminDashboard() {
     distribution: 'Equity-based blood allocation to partner hospitals',
     recall: 'Automates donor recall after the required eligibility period',
     reports: 'Generates operational reports',
+    audit_logs: 'System transaction logs for RA 10173 accountability',
     hospital_history: 'Searchable log of all blood distributions per hospital',
     dist_record_detail: 'Full breakdown of a single distribution transaction'
   };
@@ -323,6 +354,13 @@ export default function AdminDashboard() {
       };
     }
   }, [tab, mobilizeFlowStep]);
+
+  // Auto-generate granular forecast when navigating to forecasting tab
+  useEffect(() => {
+    if (tab === 'forecasting' && granularForecasts.length === 0) {
+      generateGranularForecast(fcWeeks);
+    }
+  }, [tab]);
 
   // Leaflet map render for General Donor Density map
   const initDonorMap = () => {
@@ -530,12 +568,24 @@ export default function AdminDashboard() {
               <span>Donor Recall</span>
             </button>
 
+            <button onClick={() => setTab('donation_events')} className={`w-full text-left nav-link ${tab === 'donation_events' ? 'active' : ''}`}>
+              <Calendar className="nav-icon" />
+              <span>Donation Events</span>
+            </button>
+
             <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Analytics</p>
 
             <button onClick={() => setTab('reports')} className={`w-full text-left nav-link ${tab === 'reports' ? 'active' : ''}`}>
               <ClipboardList className="nav-icon" />
               <span>Reports</span>
             </button>
+
+            {isSuperAdmin && (
+              <button onClick={() => setTab('audit_logs')} className={`w-full text-left nav-link ${tab === 'audit_logs' ? 'active' : ''}`}>
+                <FileText className="nav-icon" />
+                <span>Audit Logs</span>
+              </button>
+            )}
 
           </nav>
         </div>
@@ -927,7 +977,7 @@ export default function AdminDashboard() {
                     <h3 className="font-bold text-slate-900 text-sm tracking-tight">System Access Privileges</h3>
                     <p className="text-[10px] text-slate-400 mt-0.5">{users.length} system users registered</p>
                   </div>
-                  {isSuperAdmin && (
+                  {(isSuperAdmin || isAdministrator) && (
                     <button
                       onClick={() => setShowAddUserModal(true)}
                       className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm cursor-pointer">
@@ -944,7 +994,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-3 text-left">Role</th>
                         <th className="px-6 py-3 text-left">Email Contact</th>
                         <th className="px-6 py-3 text-left">Account Status</th>
-                        {isSuperAdmin && <th className="px-6 py-3 text-left">Actions</th>}
+                        {(isSuperAdmin || isAdministrator) && <th className="px-6 py-3 text-left">Actions</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
@@ -975,7 +1025,7 @@ export default function AdminDashboard() {
                                 {u.status}
                               </span>
                             </td>
-                            {isSuperAdmin && (
+                            {(isSuperAdmin || isAdministrator) && (
                               <td className="px-6 py-4">
                                 {canEdit ? (
                                   <button className="text-[10px] font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-2 py-0.5 rounded hover:bg-slate-50 transition-colors">
@@ -1264,6 +1314,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-3 text-left">ID</th>
                         <th className="px-6 py-3 text-left">Hospital / Blood Centre</th>
                         <th className="px-6 py-3 text-left">Type</th>
+                        <th className="px-6 py-3 text-left">Registration Status</th>
                         <th className="px-6 py-3 text-left">Contact Person</th>
                         <th className="px-6 py-3 text-left">Phone</th>
                         <th className="px-6 py-3 text-left">Email</th>
@@ -1285,6 +1336,13 @@ export default function AdminDashboard() {
                               'bg-slate-50 border-slate-200 text-slate-600'
                             }`}>{h.type}</span>
                           </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              h.registrationStatus === 'Active' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                              h.registrationStatus === 'Suspended' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                              'bg-amber-50 border-amber-100 text-amber-700'
+                            }`}>{h.registrationStatus || 'Pending'}</span>
+                          </td>
                           <td className="px-6 py-4 text-slate-700">{h.contact}</td>
                           <td className="px-6 py-4 font-mono text-slate-600">{h.phone}</td>
                           <td className="px-6 py-4 text-slate-500">{h.email}</td>
@@ -1292,7 +1350,7 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4">
                             <div className="flex gap-2">
                               <button
-                                onClick={() => { setEditingHospital(h); setHospitalForm({ name: h.name, type: h.type, contact: h.contact, phone: h.phone, email: h.email || '', address: h.address || '' }); setShowHospitalModal(true); }}
+                                onClick={() => { setEditingHospital(h); setHospitalForm({ name: h.name, type: h.type, contact: h.contact, phone: h.phone, email: h.email || '', address: h.address || '', registrationStatus: h.registrationStatus || 'Pending' }); setShowHospitalModal(true); }}
                                 className="border border-blue-100 bg-blue-50 text-blue-700 font-bold text-[10px] px-2.5 py-1 rounded hover:bg-blue-100 transition"
                               >Edit</button>
                               <button
@@ -1310,118 +1368,407 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: DEMAND FORECASTING (CAPSTONE) – EXPANDED */}
+          {/* TAB: DEMAND FORECASTING – OVERVIEW + DRILL-DOWN */}
           {tab === 'forecasting' && (() => {
-            const latestForecast = forecastData.filter(w => w.actual === null)[0];
-            const historicalAvg = Math.round(forecastData.filter(w => w.actual !== null).reduce((s, w) => s + w.actual, 0) / (forecastData.filter(w => w.actual !== null).length || 1));
-            const trend = forecastData.length >= 2 ? forecastData[forecastData.length - 1].demand - forecastData[forecastData.length - 2].demand : 0;
+            const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+            const COMPONENTS  = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
+            // Safety guard — persist middleware may return undefined for new fields
+            const gf = Array.isArray(granularForecasts) ? granularForecasts : [];
+
+            const isOverview = fcHospital === 'ALL' && fcBloodType === 'ALL' && fcComponent === 'ALL';
+
+            // ── OVERVIEW MODE: Aggregate all forecasts per week ──
+            const allWeekLabels = [...new Set(gf.map(f => f.forecastWeekLabel))].sort();
+            const overviewChartData = (() => {
+              // Historical: sum actuals per week slot across all combos (use a representative sample to avoid double-counting)
+              // Each unique (hospital, bloodType, component) combo has the same historicalWeeks dates → grab one set
+              const sampleHistorical = gf[0]?.historicalWeeks || [];
+
+              const histPart = sampleHistorical.map((w, idx) => {
+                // Sum actuals for this week index across all unique combos (plain object, no Map constructor)
+                const seen = {};
+                gf.forEach(f => {
+                  const key = `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`;
+                  if (!seen[key] && f.historicalWeeks?.[idx]) {
+                    seen[key] = f.historicalWeeks[idx].actual;
+                  }
+                });
+                const total = Object.values(seen).reduce((a, b) => a + b, 0);
+                return { label: `Wk ${idx + 1}`, actual: total, predicted: null, upper: null, lower: null };
+              });
+
+              // Predicted: sum predictedDemand for each forecastWeekLabel
+              const predPart = allWeekLabels.map(wkLabel => {
+                const rows = gf.filter(f => f.forecastWeekLabel === wkLabel);
+                const totalPred = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                const totalUpper = rows.reduce((s, f) => s + f.upperBound, 0);
+                const totalLower = rows.reduce((s, f) => s + f.lowerBound, 0);
+                return { label: wkLabel, actual: null, predicted: totalPred, upper: totalUpper, lower: totalLower };
+              });
+
+              return [...histPart, ...predPart];
+            })();
+
+            // ── FILTERED MODE: specific combo ──
+            const filtered = gf.filter(f =>
+              (fcHospital  === 'ALL' || f.hospitalId  === fcHospital)  &&
+              (fcBloodType === 'ALL' || f.bloodTypeId === fcBloodType) &&
+              (fcComponent === 'ALL' || f.componentId === fcComponent)
+            );
+
+            // Aggregate filtered by week (when partially filtered, sum remaining)
+            const filteredChartData = (() => {
+              const sampleHistorical = filtered[0]?.historicalWeeks || [];
+              const histPart = sampleHistorical.map((w, idx) => {
+                const seen = {};
+                filtered.forEach(f => {
+                  const key = `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`;
+                  if (!seen[key] && f.historicalWeeks?.[idx]) {
+                    seen[key] = f.historicalWeeks[idx].actual;
+                  }
+                });
+                const total = Object.values(seen).reduce((a, b) => a + b, 0);
+                return { label: `Wk ${idx + 1}`, actual: total, predicted: null, upper: null, lower: null };
+              });
+              const predPart = allWeekLabels.map(wkLabel => {
+                const rows = filtered.filter(f => f.forecastWeekLabel === wkLabel);
+                if (!rows.length) return null;
+                return {
+                  label: wkLabel,
+                  actual: null,
+                  predicted: rows.reduce((s, f) => s + f.predictedDemand, 0),
+                  upper:     rows.reduce((s, f) => s + f.upperBound, 0),
+                  lower:     rows.reduce((s, f) => s + f.lowerBound, 0),
+                };
+              }).filter(Boolean);
+              return [...histPart, ...predPart];
+            })();
+
+            const activeChartData = isOverview ? overviewChartData : filteredChartData;
+
+            // KPI cards
+            const nextWkPredOverview = overviewChartData.find(d => d.predicted !== null);
+            const nextWkFiltered     = filteredChartData.find(d => d.predicted !== null);
+            const totalForecastedUnitsNextWk = isOverview
+              ? (nextWkPredOverview?.predicted ?? 0)
+              : (nextWkFiltered?.predicted ?? 0);
+            const totalHistActual = (() => {
+              const histRows = activeChartData.filter(d => d.actual !== null);
+              if (!histRows.length) return 0;
+              return Math.round(histRows.reduce((s, d) => s + d.actual, 0) / histRows.length);
+            })();
+            const totalCombinations = isOverview
+              ? new Set(gf.map(f => `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`)).size
+              : new Set(filtered.map(f => `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`)).size;
+            const highestDemandCombo = (() => {
+              const rows = (isOverview ? gf : filtered).filter(f => f.weeksAhead === 1);
+              if (!rows.length) return null;
+              return rows.reduce((best, f) => f.predictedDemand > (best?.predictedDemand ?? 0) ? f : best, null);
+            })();
+
+            const hasData = gf.length > 0;
+
             return (
               <div className="space-y-5 fade-in">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Next Week Forecast</p>
-                    <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{latestForecast?.demand ?? '—'}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">units predicted</p>
+
+                {/* Algorithm banner */}
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-5 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#C21C24] flex items-center justify-center flex-shrink-0">
+                    <Activity className="w-5 h-5" />
                   </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Confidence Band</p>
-                    <p className="text-2xl font-extrabold text-blue-700 font-mono">{latestForecast?.lower ?? '—'}–{latestForecast?.upper ?? '—'}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">±7% margin</p>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Historical Avg</p>
-                    <p className="text-2xl font-extrabold text-emerald-600 font-mono">{historicalAvg}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">actual units/week</p>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Demand Trend</p>
-                    <p className={`text-2xl font-extrabold font-mono ${trend > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{trend > 0 ? '+' : ''}{trend}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{trend > 0 ? 'Rising demand' : trend < 0 ? 'Falling demand' : 'Stable'}</p>
+                  <div>
+                    <p className="font-bold text-sm mb-1">Regression-Enhanced Moving Average (REMA) Forecasting Engine</p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      Computed per <strong className="text-white">hospital × blood type × component</strong> from 8 weeks of historical issuance data.
+                      Algorithm: <span className="text-blue-300 font-mono text-[10px]">predicted = MA4 + (OLS_slope × weeks_ahead)</span> with ±8% confidence band.
+                      The <strong className="text-white">Overview</strong> chart shows the total system-wide demand the blood bank must prepare for.
+                      Use filters to drill down per hospital or blood type.
+                    </p>
                   </div>
                 </div>
 
-                {/* Chart */}
-                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                {/* Controls row */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm tracking-tight">Regression-Enhanced Demand Forecast</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Historical actuals vs. predicted demand. Dashed bands = confidence interval.</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Forecast Controls</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {isOverview
+                          ? <span className="text-emerald-600 font-bold">📊 Overview Mode — Total demand across all hospitals, blood types, and components</span>
+                          : <span className="text-[#C21C24] font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
+                        }
+                      </p>
                     </div>
-                    <button
-                      onClick={() => generateNextWeeks(4)}
-                      className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm"
-                    >
-                      <Activity className="w-3.5 h-3.5" /> Generate Next 4 Weeks
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {!isOverview && (
+                        <button onClick={() => { setFcHospital('ALL'); setFcBloodType('ALL'); setFcComponent('ALL'); }}
+                          className="text-xs font-bold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">
+                          ↩ Reset to Overview
+                        </button>
+                      )}
+                      <button onClick={() => generateGranularForecast(fcWeeks)}
+                        className="bg-[#C21C24] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
+                        <Activity className="w-3.5 h-3.5" /> Re-run Forecast
+                      </button>
+                    </div>
                   </div>
-                  <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={forecastData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="week" stroke="#94a3b8" fontSize={10} />
-                        <YAxis stroke="#94a3b8" fontSize={10} />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-                        <Line type="monotone" dataKey="upper" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" name="Upper Bound" dot={false} />
-                        <Line type="monotone" dataKey="lower" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" name="Lower Bound" dot={false} />
-                        <Line type="monotone" dataKey="demand" stroke="#C21C24" strokeWidth={3} name="Predicted Demand" dot={{ r: 4 }} />
-                        <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={3} name="Actual Distribution" dot={{ r: 4 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex items-center gap-5 mt-3 text-[10px] text-slate-500 font-semibold">
-                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
-                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
-                    <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-400 inline-block rounded" style={{borderTop:'2px dashed'}}></span>Confidence Band</span>
-                    <span className="ml-auto text-slate-400">Weeks marked (P) = predicted, no actual recorded yet</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Hospital</label>
+                      <select value={fcHospital} onChange={e => setFcHospital(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Hospitals (Overview)</option>
+                        {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Blood Type</label>
+                      <select value={fcBloodType} onChange={e => setFcBloodType(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Blood Types</option>
+                        {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Component</label>
+                      <select value={fcComponent} onChange={e => setFcComponent(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Components</option>
+                        {COMPONENTS.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Weeks Ahead</label>
+                      <select value={fcWeeks} onChange={e => setFcWeeks(Number(e.target.value))}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        {[2, 4, 6, 8].map(w => <option key={w} value={w}>{w} weeks</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* Weekly breakdown table */}
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100">
-                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Weekly Demand Breakdown</h3>
+                {!hasData && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center">
+                    <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="font-bold text-slate-500 text-sm">Generating forecast…</p>
+                    <p className="text-xs text-slate-400 mt-1">The REMA algorithm is computing predictions for all hospital combinations.</p>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                      <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                        <tr>
-                          <th className="px-6 py-3 text-left">Week</th>
-                          <th className="px-6 py-3 text-left">Predicted Demand</th>
-                          <th className="px-6 py-3 text-left">Actual Distribution</th>
-                          <th className="px-6 py-3 text-left">Confidence Band</th>
-                          <th className="px-6 py-3 text-left">Accuracy</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                        {forecastData.map((w, i) => {
-                          const acc = w.actual !== null ? Math.round(100 - (Math.abs(w.demand - w.actual) / w.demand) * 100) : null;
-                          return (
-                            <tr key={i} className={`hover:bg-slate-50/50 ${w.actual === null ? 'bg-blue-50/20' : ''}`}>
-                              <td className="px-6 py-3 font-bold text-slate-900">{w.week}</td>
-                              <td className="px-6 py-3 font-mono text-[#C21C24] font-bold">{w.demand}</td>
-                              <td className="px-6 py-3 font-mono text-emerald-700 font-bold">{w.actual ?? <span className="text-slate-400">—</span>}</td>
-                              <td className="px-6 py-3 text-slate-500">{w.lower} – {w.upper}</td>
-                              <td className="px-6 py-3">
-                                {acc !== null ? (
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                    acc >= 90 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                    acc >= 75 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                    'bg-rose-50 border-rose-100 text-[#C21C24]'
-                                  }`}>{acc}%</span>
-                                ) : <span className="text-slate-400 text-[10px] font-bold">Predicted</span>}
-                              </td>
+                )}
+
+                {hasData && (
+                  <>
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                          {isOverview ? 'Total Next-Week Demand' : 'Next-Week (Filtered)'}
+                        </p>
+                        <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{totalForecastedUnitsNextWk}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {isOverview ? 'units across all hospitals' : `units · ${fcBloodType} ${fcComponent}`}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Avg Historical Demand</p>
+                        <p className="text-2xl font-extrabold text-emerald-600 font-mono">{totalHistActual}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {isOverview ? 'total units/week (8-wk avg)' : 'units/week (filtered avg)'}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                          {isOverview ? 'Active Combinations' : 'Filtered Combinations'}
+                        </p>
+                        <p className="text-2xl font-extrabold text-blue-600 font-mono">{totalCombinations}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">hospital × type × component</p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Highest Demand (Next Wk)</p>
+                        <p className="text-2xl font-extrabold text-amber-600 font-mono">{highestDemandCombo?.predictedDemand ?? '—'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 leading-tight">
+                          {highestDemandCombo
+                            ? `${highestDemandCombo.bloodTypeId} ${highestDemandCombo.componentId}`
+                            : '—'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Main Chart */}
+                    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                            {isOverview
+                              ? '📊 Overall System Demand Forecast (All Hospitals · All Blood Types · All Components)'
+                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
+                            }
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Wk 1–8 = historical actual issuances (aggregated) | Wk 9+ = REMA predictions with ±8% confidence band
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-semibold flex-shrink-0 ml-4">
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-300 inline-block rounded"></span>Confidence</span>
+                        </div>
+                      </div>
+                      <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={activeChartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tick={{ fontFamily: 'monospace' }} />
+                            <YAxis stroke="#94a3b8" fontSize={10} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              formatter={(val, name) => [val ? `${val} units` : '—', name]}
+                            />
+                            <Line type="monotone" dataKey="upper"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="lower"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="actual"    stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
+                            <Line type="monotone" dataKey="predicted" stroke="#C21C24" strokeWidth={3} name="REMA Prediction"    dot={{ r: 4, fill: '#C21C24' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Per Blood Type Breakdown (Overview only) */}
+                    {isOverview && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Blood Type</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Summed across all hospitals & components — click a blood type to filter</p>
+                          </div>
+                        </div>
+                        <div className="p-5 grid grid-cols-4 md:grid-cols-8 gap-3">
+                          {BLOOD_TYPES.map(bt => {
+                            const rows = gf.filter(f => f.bloodTypeId === bt && f.weeksAhead === 1);
+                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                            return (
+                              <button key={bt} onClick={() => setFcBloodType(bt)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-[#C21C24] hover:bg-rose-50 transition cursor-pointer group">
+                                <span className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-black text-[11px] flex items-center justify-center group-hover:bg-[#C21C24] group-hover:text-white transition font-mono">{bt}</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{total}</span>
+                                <span className="text-[9px] text-slate-400 font-semibold">{pct}% of total</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Per Hospital Breakdown (Overview only) */}
+                    {isOverview && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100">
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {hospitals.map(hosp => {
+                            const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                            const barW = allTotal ? (total / allTotal) * 100 : 0;
+                            return (
+                              <button key={hosp.id} onClick={() => setFcHospital(hosp.id)}
+                                className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group">
+                                <div className="w-36 flex-shrink-0">
+                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
+                                  </div>
+                                </div>
+                                <div className="w-20 text-right flex-shrink-0">
+                                  <span className="font-extrabold text-slate-900 font-mono text-sm">{total}</span>
+                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Forecast Table — schema match, filtered view */}
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                            Forecast Records {!isOverview && <span className="text-[#C21C24]">(Filtered)</span>}
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {isOverview
+                              ? `Showing top 20 records by predicted demand — use filters to drill down`
+                              : `${filtered.length} records matching current filter`
+                            }
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <tr>
+                              <th className="px-5 py-3 text-left">Forecast ID</th>
+                              <th className="px-5 py-3 text-left">Hospital</th>
+                              <th className="px-5 py-3 text-left">Blood Type</th>
+                              <th className="px-5 py-3 text-left">Component</th>
+                              <th className="px-5 py-3 text-left">Forecast Week</th>
+                              <th className="px-5 py-3 text-right">Predicted Demand</th>
+                              <th className="px-5 py-3 text-center">Confidence</th>
+                              <th className="px-5 py-3 text-center">Trend</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {(isOverview
+                              ? [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand).slice(0, 20)
+                              : filtered
+                            ).map(f => (
+                              <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
+                                <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>
+                                <td className="px-5 py-2.5">
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-rose-50 text-[#C21C24] font-black text-[9px] border border-rose-100 font-mono">{f.bloodTypeId}</span>
+                                </td>
+                                <td className="px-5 py-2.5">
+                                  <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
+                                </td>
+                                <td className="px-5 py-2.5 font-mono text-slate-500">{f.forecastWeek} <span className="text-[9px] text-slate-400">({f.forecastWeekLabel})</span></td>
+                                <td className="px-5 py-2.5 text-right">
+                                  <span className="text-base font-black text-[#C21C24] font-mono">{f.predictedDemand}</span>
+                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                </td>
+                                <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound}–{f.upperBound}</td>
+                                <td className="px-5 py-2.5 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                    f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                    f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                    'bg-slate-50 border-slate-200 text-slate-500'
+                                  }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })()}
 
+          {/* TAB: DISTRIBUTION RECOMMENDATION (CAPSTONE) – EQUITY ALGORITHM */}
           {/* TAB: DISTRIBUTION RECOMMENDATION (CAPSTONE) – EQUITY ALGORITHM */}
           {tab === 'distribution' && (() => {
             const allocations = getEquityAllocations();
@@ -1512,6 +1859,79 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 ))}
+                {/* PERSISTENT RECOMMENDATIONS REQUIRING APPROVAL (Table 15) */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden space-y-4">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500">
+                      <Database className="w-4 h-4 text-[#C21C24]" /> Pending Distribution Recommendations (Table 15)
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-left border-collapse text-xs font-semibold text-slate-650">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
+                          <th className="px-6 py-3 font-bold">Recommendation ID</th>
+                          <th className="px-6 py-3 font-bold">Hospital</th>
+                          <th className="px-6 py-3 font-bold text-center">Blood Type</th>
+                          <th className="px-6 py-3 font-bold">Component</th>
+                          <th className="px-6 py-3 font-bold text-center">Suggested Quantity</th>
+                          <th className="px-6 py-3 font-bold">Status</th>
+                          <th className="px-6 py-3 text-center font-bold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-normal">
+                        {(recommendations || []).map(rec => {
+                          const hosp = hospitals.find(h => h.id === rec.hospitalId);
+                          return (
+                            <tr key={rec.recommendationId} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-3 font-mono font-bold text-slate-900">{rec.recommendationId}</td>
+                              <td className="px-6 py-3 font-bold text-slate-800">{hosp?.name || rec.hospitalId}</td>
+                              <td className="px-6 py-3 text-center">
+                                <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono shadow-sm">
+                                  {rec.bloodTypeId}
+                                </span>
+                              </td>
+                              <td className="px-6 py-3 font-bold text-slate-700">{rec.componentId}</td>
+                              <td className="px-6 py-3 text-center font-mono font-bold text-slate-900">{rec.recommendedQuantity} bags</td>
+                              <td className="px-6 py-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  rec.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                                  'bg-amber-50 text-amber-700 border border-amber-100'
+                                }`}>
+                                  {rec.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-3">
+                                {rec.status === 'Pending' ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => approveRecommendation(rec.recommendationId)}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-1 rounded transition cursor-pointer"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => rejectRecommendation(rec.recommendationId)}
+                                      className="bg-white border border-rose-200 text-[#C21C24] hover:bg-rose-50 font-bold text-[10px] px-3 py-1 rounded transition cursor-pointer"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="text-center text-[10px] text-slate-400 font-medium">
+                                    Processed by {rec.approvedBy} at {rec.actedAt}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             );
           })()}
@@ -1866,6 +2286,126 @@ export default function AdminDashboard() {
             );
           })()}
 
+          {/* TAB: AUDIT LOGS (Table 18) */}
+          {tab === 'audit_logs' && isSuperAdmin && (
+            <div className="space-y-4 fade-in">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Audit Logs (Table 18)</h3>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded">
+                    Total: {auditLogs ? auditLogs.length : 0} logs
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs font-semibold text-slate-650">
+                    <thead className="bg-slate-50 text-[10px] font-bold text-slate-450 uppercase tracking-wider text-left">
+                      <tr>
+                        <th className="px-6 py-3">Log ID</th>
+                        <th className="px-6 py-3">User ID</th>
+                        <th className="px-6 py-3">Action</th>
+                        <th className="px-6 py-3">Module</th>
+                        <th className="px-6 py-3 text-center">Record ID</th>
+                        <th className="px-6 py-3">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-normal text-slate-600">
+                      {(auditLogs || []).map((log) => (
+                        <tr key={log.logId} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-3.5 font-mono font-bold text-slate-900">{log.logId}</td>
+                          <td className="px-6 py-3.5 font-mono text-slate-500">{log.userId}</td>
+                          <td className="px-6 py-3.5 font-medium text-slate-800">{log.action}</td>
+                          <td className="px-6 py-3.5">
+                            <span className="bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider inline-flex items-center">
+                              {log.module}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3.5 text-center font-mono text-[10px]">{log.recordId || '—'}</td>
+                          <td className="px-6 py-3.5 text-slate-450 font-mono text-[10px]">{log.performedAt}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── DONATION EVENTS TAB (Table 6) ─────────────────────────────── */}
+          {tab === 'donation_events' && (
+            <div className="space-y-4 fade-in">
+
+              {/* Header card */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight flex items-center gap-2">
+                      <Calendar size={15} className="text-red-600" />
+                      Donation Events — Table 6
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Manage scheduled blood donation drives and collection events</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEventForm({
+                        province: 'Davao del Sur',
+                        cityMunicipality: 'Davao City',
+                        barangayOrganization: '',
+                        eventDate: new Date().toISOString().slice(0, 10)
+                      });
+                      setEventSaved(false);
+                      setShowEventModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-all shadow-sm"
+                  >
+                    <Plus size={13} /> Add Event
+                  </button>
+                </div>
+
+                {/* Events Table */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs font-semibold text-slate-650">
+                    <thead className="bg-slate-50 text-[10px] font-bold text-slate-450 uppercase tracking-wider text-left">
+                      <tr>
+                        <th className="px-5 py-3">Event ID</th>
+                        <th className="px-5 py-3">Province</th>
+                        <th className="px-5 py-3">City / Municipality</th>
+                        <th className="px-5 py-3">Barangay / Organization</th>
+                        <th className="px-5 py-3">Event Date</th>
+                        <th className="px-5 py-3">Registered By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-normal text-slate-600">
+                      {(donationEvents || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-[11px]">
+                            <Calendar size={28} className="mx-auto mb-2 opacity-25" />
+                            No donation events recorded yet. Click <strong>Add Event</strong> to create one.
+                          </td>
+                        </tr>
+                      ) : (
+                        (donationEvents || []).map((ev) => (
+                          <tr key={ev.eventId} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="px-5 py-3.5 font-mono font-bold text-slate-900">{ev.eventId}</td>
+                            <td className="px-5 py-3.5">{ev.province}</td>
+                            <td className="px-5 py-3.5">{ev.cityMunicipality}</td>
+                            <td className="px-5 py-3.5">{ev.barangayOrganization || <span className="text-slate-300">—</span>}</td>
+                            <td className="px-5 py-3.5">
+                              <span className="bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded">
+                                {ev.eventDate}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 font-mono text-slate-450 text-[10px]">{ev.registeredBy || authSystemUser?.username || '—'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -1932,6 +2472,14 @@ export default function AdminDashboard() {
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email</label>
                 <input type="email" value={hospitalForm.email} onChange={e => setHospitalForm(f => ({...f, email: e.target.value}))} placeholder="blood@hospital.ph" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Registration Status</label>
+                <select value={hospitalForm.registrationStatus} onChange={e => setHospitalForm(f => ({...f, registrationStatus: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                  <option>Active</option>
+                  <option>Pending</option>
+                  <option>Suspended</option>
+                </select>
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Address</label>
@@ -2029,68 +2577,268 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ADD SYSTEM USER MODAL */}
-      {showAddUserModal && isSuperAdmin && (
+      {/* ADD SYSTEM USER MODAL — Table 2: Users */}
+      {showAddUserModal && (isSuperAdmin || isAdministrator) && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => { setShowAddUserModal(false); setUserSaved(false); }}>
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md modal-in" onClick={e => e.stopPropagation()}>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg modal-in" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white rounded-t-2xl">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrative Tool</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrative Tool · Table 2: Users</p>
               <h4 className="font-bold text-slate-900 text-sm tracking-tight">Register New System User</h4>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
               {userSaved && (
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-2.5 rounded-lg text-xs font-bold text-center">
                   User registered successfully!
                 </div>
               )}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Full Name</label>
-                <input type="text" value={addUserForm.name} onChange={e => setAddUserForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Dr. Jane Doe" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+
+              {/* first_name & last_name */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">First Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={addUserForm.firstName} onChange={e => setAddUserForm(f => ({ ...f, firstName: e.target.value }))} placeholder="e.g. Jane" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Last Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={addUserForm.lastName} onChange={e => setAddUserForm(f => ({ ...f, lastName: e.target.value }))} placeholder="e.g. Doe" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+                </div>
               </div>
+
+              {/* email */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Email Address</label>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Email Address <span className="text-rose-500">*</span></label>
                 <input type="email" value={addUserForm.email} onChange={e => setAddUserForm(f => ({ ...f, email: e.target.value }))} placeholder="jane.doe@bloodlink.dvo" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
               </div>
+
+              {/* password_hash */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Assigned Role</label>
-                <select value={addUserForm.role} onChange={e => setAddUserForm(f => ({ ...f, role: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
-                  <option>Registry Staff</option>
-                  <option>Blood Bank Staff</option>
-                  <option>Issuance Personnel</option>
-                  <option>Hospital User</option>
-                  <option>Administrator</option>
-                  <option>Super Admin</option>
-                </select>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" value={addUserForm.passwordHash} onChange={e => setAddUserForm(f => ({ ...f, passwordHash: e.target.value }))} placeholder="Enter initial password" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+                <p className="text-[9px] text-slate-400 mt-0.5">Stored as password_hash (VARCHAR 255)</p>
               </div>
-              {addUserForm.role === 'Hospital User' && (
+
+              {/* contact_number */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Contact Number</label>
+                <input type="text" value={addUserForm.contactNumber} onChange={e => setAddUserForm(f => ({ ...f, contactNumber: e.target.value }))} placeholder="e.g. +63 917 123 4567" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+              </div>
+
+              {/* role_id & role */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Requesting Hospital / Facility</label>
-                  <select value={addUserForm.hospitalId} onChange={e => setAddUserForm(f => ({ ...f, hospitalId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
-                    <option value="">Select hospital...</option>
-                    {hospitals.map(h => (
-                      <option key={h.id} value={h.id}>{h.name}</option>
-                    ))}
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Assigned Role <span className="text-rose-500">*</span></label>
+                  <select
+                    value={addUserForm.role}
+                    onChange={e => {
+                      const roleMap = { 'Super Admin': 'ROLE-001', 'Administrator': 'ROLE-002', 'Registry Staff': 'ROLE-003', 'Blood Bank Staff': 'ROLE-004', 'Issuance Personnel': 'ROLE-005', 'Hospital User': 'ROLE-006' };
+                      setAddUserForm(f => ({ ...f, role: e.target.value, roleId: roleMap[e.target.value] || 'ROLE-003' }));
+                    }}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800"
+                  >
+                    <option>Registry Staff</option>
+                    <option>Blood Bank Staff</option>
+                    <option>Issuance Personnel</option>
+                    <option>Hospital User</option>
+                    <option>Administrator</option>
+                    <option>Super Admin</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Role ID (FK)</label>
+                  <input type="text" value={addUserForm.roleId} readOnly className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-100 text-slate-500 outline-none font-mono" />
+                  <p className="text-[9px] text-slate-400 mt-0.5">Auto-mapped from Table 1: Roles</p>
+                </div>
+              </div>
+
+              {/* hospital_id — conditional */}
+              {addUserForm.role === 'Hospital User' && (
+                <div className="bg-purple-50/40 p-3 rounded-lg border border-purple-100/50 space-y-2 animate-in fade-in duration-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider mb-1">Affiliated Hospital / Facility (FK)</label>
+                    <select 
+                      value={addUserForm.hospitalId} 
+                      onChange={e => {
+                        const targetId = e.target.value;
+                        const match = hospitals.find(h => h.id === targetId);
+                        if (match) {
+                          const nameParts = (match.contact || 'Hospital Admin').split(' ');
+                          setAddUserForm(f => ({
+                            ...f,
+                            hospitalId: targetId,
+                            firstName: nameParts[0] || 'Hospital',
+                            lastName: nameParts.slice(1).join(' ') || 'Admin',
+                            email: match.email || '',
+                            contactNumber: match.phone || ''
+                          }));
+                        } else {
+                          setAddUserForm(f => ({ ...f, hospitalId: '' }));
+                        }
+                      }} 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white outline-none focus:border-slate-800"
+                    >
+                      <option value="">Select hospital...</option>
+                      {hospitals.map(h => (
+                        <option key={h.id} value={h.id}>{h.name} ({h.registrationStatus || 'Pending'})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="text-[9.5px] text-purple-600 font-medium italic">💡 Selecting an affiliated hospital will automatically fetch the registered Contact Person, Email, and Phone details, and will mark the hospital registration as <b>Active (Approved)</b> upon registration.</p>
+                </div>
               )}
+
+              {/* status */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Account Status</label>
+                <select value={addUserForm.status} onChange={e => setAddUserForm(f => ({ ...f, status: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+                <p className="text-[9px] text-slate-400 mt-0.5">ENUM('Active','Inactive') — default: Active</p>
+              </div>
+
+              {/* Metadata note */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <p className="text-[9px] text-slate-500 font-semibold"><span className="font-bold text-slate-700">Note:</span> user_id (PK), created_at, and updated_at are auto-generated by the system upon submission.</p>
+              </div>
+
+              {/* Action Buttons */}
               <div className="flex gap-2.5 text-xs font-semibold pt-2">
                 <button
                   onClick={() => { setShowAddUserModal(false); setUserSaved(false); }}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-655 rounded-lg hover:bg-slate-100 transition"
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-655 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                 >Cancel</button>
                 <button
                   onClick={() => {
-                    if (!addUserForm.name.trim() || !addUserForm.email.trim()) return alert('Name and email are required.');
+                    if (!addUserForm.firstName.trim() || !addUserForm.lastName.trim() || !addUserForm.email.trim()) return alert('First name, last name, and email are required.');
                     addUser(addUserForm);
                     setUserSaved(true);
-                    setAddUserForm({ name: '', role: 'Registry Staff', email: '', hospitalId: '' });
+                    setAddUserForm({ firstName: '', lastName: '', email: '', passwordHash: '', contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003', status: 'Active', hospitalId: '' });
                     setTimeout(() => {
                       setUserSaved(false);
                       setShowAddUserModal(false);
                     }, 1200);
                   }}
-                  className="flex-1 px-4 py-2.5 bg-purple-650 text-white rounded-lg hover:bg-purple-700 transition shadow-sm"
+                  className="flex-1 px-4 py-2.5 bg-purple-650 text-white rounded-lg hover:bg-purple-700 transition shadow-sm cursor-pointer"
                 >Register User</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD DONATION EVENT MODAL — Table 6: Donation Events ─────────── */}
+      {showEventModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => { setShowEventModal(false); setEventSaved(false); }}
+        >
+          <div
+            className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md modal-in"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-white rounded-t-2xl">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin Tool · Table 6: Donation Events</p>
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Create Donation Event</h4>
+            </div>
+
+            {/* Modal body */}
+            <div className="p-6 space-y-3">
+              {eventSaved && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-2.5 rounded-lg text-xs font-bold text-center">
+                  Donation event saved successfully!
+                </div>
+              )}
+
+              {/* Province */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">
+                  Province <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={eventForm.province}
+                  onChange={e => setEventForm(f => ({ ...f, province: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50"
+                >
+                  <option value="Davao del Sur">Davao del Sur</option>
+                  <option value="Davao del Norte">Davao del Norte</option>
+                  <option value="Davao Oriental">Davao Oriental</option>
+                  <option value="Davao de Oro">Davao de Oro</option>
+                  <option value="Davao Occidental">Davao Occidental</option>
+                </select>
+              </div>
+
+              {/* City / Municipality */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">
+                  City / Municipality <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={eventForm.cityMunicipality}
+                  onChange={e => setEventForm(f => ({ ...f, cityMunicipality: e.target.value }))}
+                  placeholder="e.g. Davao City"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50"
+                />
+              </div>
+
+              {/* Barangay / Organization */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">
+                  Barangay / Organization
+                </label>
+                <input
+                  type="text"
+                  value={eventForm.barangayOrganization}
+                  onChange={e => setEventForm(f => ({ ...f, barangayOrganization: e.target.value }))}
+                  placeholder="e.g. Barangay Poblacion / DLSU-D Chapter"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50"
+                />
+              </div>
+
+              {/* Event Date */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">
+                  Event Date <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={eventForm.eventDate}
+                  onChange={e => setEventForm(f => ({ ...f, eventDate: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2.5 text-xs font-semibold pt-2">
+                <button
+                  onClick={() => { setShowEventModal(false); setEventSaved(false); }}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-650 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!eventForm.cityMunicipality.trim() || !eventForm.eventDate.trim()) {
+                      return alert('City/Municipality and Event Date are required.');
+                    }
+                    addDonationEvent({ ...eventForm, registeredBy: authSystemUser?.username || 'admin' });
+                    setEventSaved(true);
+                    setEventForm({
+                      province: 'Davao del Sur',
+                      cityMunicipality: 'Davao City',
+                      barangayOrganization: '',
+                      eventDate: new Date().toISOString().slice(0, 10)
+                    });
+                    setTimeout(() => {
+                      setEventSaved(false);
+                      setShowEventModal(false);
+                    }, 1200);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-sm cursor-pointer"
+                >
+                  Save Event
+                </button>
               </div>
             </div>
           </div>

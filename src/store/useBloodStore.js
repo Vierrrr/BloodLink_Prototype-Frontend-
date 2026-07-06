@@ -73,8 +73,6 @@ const initialRequests = [
     refNo: 'REQ-4821',
     hospital: 'Southern Philippines Medical Center (SPMC)',
     hospitalId: 'HOSP-001',
-    patientBloodType: 'O-',
-    units: 2,
     urgency: 'urgent',
     dateNeeded: '2026-06-20',
     contactPerson: 'Dr. Juan Dela Cruz, MD',
@@ -85,6 +83,11 @@ const initialRequests = [
     diagnosis: 'Open Heart Surgery',
     ward: 'Ward 4B, Room 201',
     hospitalRefNo: 'SPMC-2026-04821',
+    patientBloodType: 'O-',
+    units: 2,
+    items: [
+      { bloodType: 'O-', component: 'PRBC', units: 2 }
+    ]
   }
 ];
 
@@ -96,7 +99,8 @@ const initialHospitals = [
     contact: 'Dr. Maria Santos',
     phone: '0917-000-0001',
     email: 'bloodbank@spmc.gov.ph',
-    address: 'J.P. Laurel Ave., Bajada, Davao City'
+    address: 'J.P. Laurel Ave., Bajada, Davao City',
+    registrationStatus: 'Active'
   },
   {
     id: 'HOSP-002',
@@ -105,7 +109,8 @@ const initialHospitals = [
     contact: 'Dr. Juan Reyes',
     phone: '0917-000-0002',
     email: 'blood@davaodoctors.com',
-    address: 'E. Quirino Ave., Davao City'
+    address: 'E. Quirino Ave., Davao City',
+    registrationStatus: 'Active'
   },
   {
     id: 'HOSP-003',
@@ -114,7 +119,8 @@ const initialHospitals = [
     contact: 'Dr. Ana Cruz',
     phone: '0917-000-0003',
     email: 'blood@sanpedro.ph',
-    address: 'Ponciano St., Davao City'
+    address: 'Ponciano St., Davao City',
+    registrationStatus: 'Active'
   },
   {
     id: 'HOSP-004',
@@ -123,7 +129,8 @@ const initialHospitals = [
     contact: 'Ms. Joy Villanueva',
     phone: '0917-000-0004',
     email: 'davao@redcross.org.ph',
-    address: 'Anda St., Davao City'
+    address: 'Anda St., Davao City',
+    registrationStatus: 'Active'
   }
 ];
 
@@ -135,6 +142,40 @@ const initialUsers = [
   { id: 'USR-005', name: 'SNBC Issuance Officer', role: 'Issuance Personnel', email: 'issuance@bloodlink.dvo', status: 'Active', hospitalId: null },
   { id: 'USR-006', name: 'Dr. Roberto Santos', role: 'Hospital User', email: 'hospital@bloodlink.dvo', status: 'Active', hospitalId: 'HOSP-001' }
 ];
+
+const initialDonationEvents = [
+  { eventId: 'EVT-001', province: 'Davao del Sur', cityMunicipality: 'Davao City', barangayOrganization: 'Buhangin Gym', eventDate: '2026-03-10' },
+  { eventId: 'EVT-002', province: 'Davao del Sur', cityMunicipality: 'Davao City', barangayOrganization: 'Matina Center', eventDate: '2026-06-15' }
+];
+
+const initialDonations = [
+  { donationId: 'DON-001', donorId: 'D001', eventId: 'EVT-001', bloodTypeId: 'O+', donationDate: '2026-03-10', screeningOutcome: 'Accepted' },
+  { donationId: 'DON-002', donorId: 'D002', eventId: 'EVT-002', bloodTypeId: 'A+', donationDate: '2026-06-15', screeningOutcome: 'Accepted' },
+  { donationId: 'DON-003', donorId: 'D003', eventId: 'EVT-001', bloodTypeId: 'B-', donationDate: '2026-05-20', screeningOutcome: 'Accepted' },
+  { donationId: 'DON-004', donorId: 'D014', eventId: 'EVT-001', bloodTypeId: 'O+', donationDate: '2026-02-05', screeningOutcome: 'Temporarily Deferred', deferralReason: 'Low Hemoglobin', deferralEndDate: '2026-04-05' }
+];
+
+const initialLabTestResults = [
+  { testId: 'LAB-001', donationId: 'DON-001', hemoglobinResult: '14.2', bloodTypeConfirmed: 'O+', hbsagResult: 'Non-Reactive', syphilisResult: 'Non-Reactive', hivResult: 'Non-Reactive', hcvResult: 'Non-Reactive', malariaResult: 'Non-Reactive', natResult: 'Non-Reactive', othersResult: '', recordedBy: 'USR-003' },
+  { testId: 'LAB-002', donationId: 'DON-002', hemoglobinResult: '13.5', bloodTypeConfirmed: 'A+', hbsagResult: 'Non-Reactive', syphilisResult: 'Non-Reactive', hivResult: 'Non-Reactive', hcvResult: 'Non-Reactive', malariaResult: 'Non-Reactive', natResult: 'Non-Reactive', othersResult: '', recordedBy: 'USR-003' },
+  { testId: 'LAB-003', donationId: 'DON-003', hemoglobinResult: '15.1', bloodTypeConfirmed: 'B-', hbsagResult: 'Non-Reactive', syphilisResult: 'Non-Reactive', hivResult: 'Non-Reactive', hcvResult: 'Non-Reactive', malariaResult: 'Non-Reactive', natResult: 'Non-Reactive', othersResult: '', recordedBy: 'USR-003' }
+];
+
+const initialBloodInventory = [
+  { unitId: 'BU-2026-001', donationId: 'DON-001', bloodTypeId: 'O+', componentId: 'PRBC', collectionDate: '2026-03-10', expirationDate: '2026-04-21', quantity: 450, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' },
+  { unitId: 'BU-2026-002', donationId: 'DON-002', bloodTypeId: 'A+', componentId: 'Platelet Concentrate', collectionDate: '2026-06-15', expirationDate: '2026-07-20', quantity: 250, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' },
+  { unitId: 'BU-2026-003', donationId: 'DON-003', bloodTypeId: 'B-', componentId: 'FFP', collectionDate: '2026-05-20', expirationDate: '2026-11-20', quantity: 300, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' }
+];
+
+const initialRecommendations = [
+  { recommendationId: 'REC-001', forecastId: 'FOR-001', hospitalId: 'HOSP-001', bloodTypeId: 'O+', componentId: 'PRBC', recommendedQuantity: 14, recommendationDate: '2026-07-02', status: 'Pending', approvedBy: null, actedAt: null }
+];
+
+const initialAuditLogs = [
+  { logId: 'LOG-001', userId: 'USR-002', action: 'Login successful', module: 'Auth', recordId: 'USR-002', oldValue: null, newValue: null, performedAt: 'July 2, 2026, 8:44 AM' }
+];
+
+const initialDonorRecalls = [];
 
 // 8‑week historical + 4 predicted weeks with upper/lower confidence bounds
 const initialForecastData = [
@@ -238,11 +279,21 @@ export const useBloodStore = create(
     (set, get) => ({
       // ─── State ──────────────────────────────────────────────────────────
       donors: initialDonors,
+      donationEvents: initialDonationEvents,
+      donations: initialDonations,
+      labTestResults: initialLabTestResults,
+      bloodInventory: initialBloodInventory,
+      recommendations: initialRecommendations,
+      auditLogs: initialAuditLogs,
+      donorRecalls: initialDonorRecalls,
+      bloodIssuance: [],
+      bloodIssuanceDetails: [],
       inventory: initialInventory,
       bloodRequests: initialRequests,
       hospitals: initialHospitals,
       users: initialUsers,
       forecastData: initialForecastData,
+      granularForecasts: [], // Seeded by generateGranularForecast on first call
       distributionLog: initialDistributionLog,
       smsLogs: [],
       currentUser: {
@@ -325,6 +376,37 @@ export const useBloodStore = create(
         set((state) => ({ donors: [newDonor, ...state.donors] }));
       },
 
+      addDonationEvent: (eventForm) => {
+        const eventId = 'EVT-' + Math.floor(100 + Math.random() * 900);
+        const newEvent = {
+          eventId: eventId,
+          event_id: eventId,
+          province: eventForm.province || '',
+          cityMunicipality: eventForm.cityMunicipality || '',
+          city_municipality: eventForm.cityMunicipality || '',
+          barangayOrganization: eventForm.barangayOrganization || '',
+          barangay_organization: eventForm.barangayOrganization || '',
+          eventDate: eventForm.eventDate || '',
+          event_date: eventForm.eventDate || '',
+          createdAt: new Date().toLocaleString(),
+          created_at: new Date().toLocaleString()
+        };
+        set((state) => ({
+          donationEvents: [...state.donationEvents, newEvent],
+          auditLogs: [{
+            logId: 'LOG-' + Math.floor(100 + Math.random() * 900),
+            userId: state.authSystemUser?.id || 'USR-001',
+            action: `Added Donation Event: ${newEvent.barangayOrganization} (${newEvent.eventDate})`,
+            module: 'Donation Events',
+            recordId: eventId,
+            oldValue: null,
+            newValue: JSON.stringify(newEvent),
+            performedAt: new Date().toLocaleString()
+          }, ...state.auditLogs]
+        }));
+        return newEvent;
+      },
+
 
       // ─── Distribution & Equity Allocation ───────────────────────────────
       getEquityAllocations: () => {
@@ -362,10 +444,9 @@ export const useBloodStore = create(
           .sort((a, b) => new Date(b.date) - new Date(a.date));
       },
 
-      // ─── Forecasting ────────────────────────────────────────────────────
+      // ─── Forecasting (Legacy weekly chart) ──────────────────────────────
       generateNextWeeks: (weeks = 4) => {
         const { forecastData } = get();
-        // Simple linear regression: slope from last 4 actual points
         const actuals = forecastData.filter(w => w.actual !== null);
         const n = actuals.length;
         const slope = n >= 2
@@ -374,21 +455,102 @@ export const useBloodStore = create(
         const lastDemand = actuals.length > 0 ? actuals[n - 1].demand : 160;
         const existingPredicted = forecastData.filter(w => w.actual === null).length;
         const totalWeeks = forecastData.length;
-
         const newWeeks = [];
         for (let i = 1; i <= weeks; i++) {
           const wkNum = totalWeeks + existingPredicted + i;
           const demand = Math.round(lastDemand + slope * (existingPredicted + i));
           const margin = Math.round(demand * 0.07);
-          newWeeks.push({
-            week: `Wk ${wkNum} (P)`,
-            demand,
-            actual: null,
-            upper: demand + margin,
-            lower: demand - margin,
-          });
+          newWeeks.push({ week: `Wk ${wkNum} (P)`, demand, actual: null, upper: demand + margin, lower: demand - margin });
         }
         set((state) => ({ forecastData: [...state.forecastData, ...newWeeks] }));
+      },
+
+      // ─── Granular Forecast: Regression-Enhanced Moving Average ──────────
+      // Algorithm:
+      //   1. Collect last 8 weeks of actual issuances per hospital/blood type/component.
+      //   2. Compute 4-week moving average (MA4) to smooth noise.
+      //   3. Apply OLS linear regression to find trend slope.
+      //   4. Predict N weeks ahead: predicted = MA_last + slope * i.
+      //   5. Confidence interval: ±8% of predicted value.
+      generateGranularForecast: (weeksAhead = 4) => {
+        const { distributionLog, hospitals, inventory } = get();
+        const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+        const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
+
+        // Build synthetic 8-week historical data per hospital × blood type × component
+        // using distribution log and inventory as base references
+        const BASE_WEEK = new Date('2026-05-05'); // Week 1 start
+        const results = [];
+        let forecastIdSeq = 1;
+
+        hospitals.forEach(hosp => {
+          BLOOD_TYPES.forEach(bt => {
+            // Only generate forecast for blood types with some inventory
+            const inv = inventory.find(i => i.type === bt);
+            if (!inv) return;
+
+            COMPONENTS.forEach(comp => {
+              // Base demand varies realistically by component type and blood type rarity
+              const rarityFactor = { 'O+': 1.0, 'A+': 0.8, 'B+': 0.7, 'AB+': 0.3, 'O-': 0.6, 'A-': 0.4, 'B-': 0.2, 'AB-': 0.1 }[bt] || 0.5;
+              const compFactor = { 'PRBC': 1.0, 'Platelet Concentrate': 0.6, 'FFP': 0.5, 'Cryoprecipitate': 0.3, 'Cryosupernate': 0.2 }[comp] || 0.5;
+              const hospFactor = hosp.type === 'Government' ? 1.5 : hosp.type === 'Blood Bank' ? 1.2 : 1.0;
+              const baseDemand = Math.round(8 * rarityFactor * compFactor * hospFactor);
+
+              if (baseDemand === 0) return; // Skip near-zero demand combinations
+
+              // Build 8 weeks of synthetic actuals with small random noise
+              const historicalWeeks = [];
+              for (let w = 0; w < 8; w++) {
+                const weekDate = new Date(BASE_WEEK);
+                weekDate.setDate(weekDate.getDate() + w * 7);
+                const noise = Math.round((Math.random() - 0.4) * baseDemand * 0.3);
+                historicalWeeks.push({ week: w, date: weekDate.toISOString().slice(0, 10), actual: Math.max(0, baseDemand + noise) });
+              }
+
+              // Step 1: 4-week Moving Average on most recent actuals
+              const lastFour = historicalWeeks.slice(-4).map(w => w.actual);
+              const maLast = lastFour.reduce((a, b) => a + b, 0) / 4;
+
+              // Step 2: OLS Linear Regression (y = a + b*x)
+              const n = historicalWeeks.length;
+              const xs = historicalWeeks.map(w => w.week);
+              const ys = historicalWeeks.map(w => w.actual);
+              const sumX = xs.reduce((a, b) => a + b, 0);
+              const sumY = ys.reduce((a, b) => a + b, 0);
+              const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+              const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+              const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) || 0;
+
+              // Step 3: Generate N weeks ahead
+              for (let i = 1; i <= weeksAhead; i++) {
+                const weekDate = new Date(BASE_WEEK);
+                weekDate.setDate(weekDate.getDate() + (8 + i - 1) * 7);
+                const predicted = Math.max(0, Math.round(maLast + slope * i));
+                const margin = Math.max(1, Math.round(predicted * 0.08));
+
+                results.push({
+                  forecastId: forecastIdSeq++,
+                  hospitalId: hosp.id,
+                  hospitalName: hosp.name,
+                  bloodTypeId: bt,
+                  componentId: comp,
+                  forecastWeek: weekDate.toISOString().slice(0, 10),
+                  forecastWeekLabel: `Wk ${8 + i}`,
+                  predictedDemand: predicted,
+                  upperBound: predicted + margin,
+                  lowerBound: Math.max(0, predicted - margin),
+                  generatedAt: new Date().toISOString(),
+                  historicalWeeks, // Carry history for chart use
+                  slope: parseFloat(slope.toFixed(3)),
+                  maLast: parseFloat(maLast.toFixed(1)),
+                  weeksAhead: i,
+                });
+              }
+            });
+          });
+        });
+
+        set({ granularForecasts: results });
       },
 
       // ─── Donor Registration ─────────────────────────────────────────────
@@ -413,16 +575,167 @@ export const useBloodStore = create(
       },
 
       updateDonorMedical: (id, medicalForm) => {
-        set((state) => ({
-          donors: state.donors.map(d => d.id === id ? { ...d, ...medicalForm } : d)
-        }));
+        set((state) => {
+          const donationId = 'DON-' + Math.floor(100 + Math.random() * 900);
+          const testId = 'LAB-' + Math.floor(100 + Math.random() * 900);
+          
+          const newDonation = {
+            donationId,
+            donorId: id,
+            eventId: medicalForm.eventId || 'EVT-001',
+            bloodTypeId: medicalForm.bloodType || 'O+',
+            donationDate: medicalForm.donationDate || new Date().toISOString().slice(0, 10),
+            screeningOutcome: medicalForm.screeningOutcome || 'Accepted',
+            deferralReason: medicalForm.deferralReason || '',
+            deferralEndDate: medicalForm.deferralEndDate || ''
+          };
+
+          const newLabResult = {
+            testId,
+            donationId,
+            hemoglobinResult: medicalForm.hemoglobinResult || '14.5',
+            bloodTypeConfirmed: medicalForm.bloodType || 'O+',
+            hbsagResult: medicalForm.hbsagResult || 'Non-Reactive',
+            syphilisResult: medicalForm.syphilisResult || 'Non-Reactive',
+            hivResult: medicalForm.hivResult || 'Non-Reactive',
+            hcvResult: medicalForm.hcvResult || 'Non-Reactive',
+            malariaResult: medicalForm.malariaResult || 'Non-Reactive',
+            natResult: medicalForm.natResult || 'Non-Reactive',
+            othersResult: '',
+            recordedBy: state.authSystemUser?.id || 'USR-003'
+          };
+
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-003',
+            action: `Recorded Onsite Screening Outcome for donor ${id}`,
+            module: 'Registry',
+            recordId: id,
+            oldValue: JSON.stringify(state.donors.find(d => d.id === id) || null),
+            newValue: JSON.stringify(medicalForm),
+            performedAt: new Date().toLocaleString()
+          };
+
+          const updatedDonors = state.donors.map(d => d.id === id ? { ...d, ...medicalForm } : d);
+
+          return {
+            donors: updatedDonors,
+            donations: [newDonation, ...state.donations],
+            labTestResults: [newLabResult, ...state.labTestResults],
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
+      },
+
+      addLabTestResult: (labForm) => {
+        set((state) => {
+          const testId = 'LAB-' + Math.floor(100 + Math.random() * 900);
+          const newLabResult = {
+            testId,
+            donationId: labForm.donationId || '',
+            hemoglobinResult: labForm.hemoglobinResult || '14.5',
+            bloodTypeConfirmed: labForm.bloodTypeConfirmed || 'O+',
+            hbsagResult: labForm.hbsagResult || 'Non-Reactive',
+            syphilisResult: labForm.syphilisResult || 'Non-Reactive',
+            hivResult: labForm.hivResult || 'Non-Reactive',
+            hcvResult: labForm.hcvResult || 'Non-Reactive',
+            malariaResult: labForm.malariaResult || 'Non-Reactive',
+            natResult: labForm.natResult || 'Non-Reactive',
+            othersResult: labForm.othersResult || '',
+            recordedBy: state.authSystemUser?.id || 'USR-003'
+          };
+
+          // Update corresponding donor's bloodType if linked
+          const donation = state.donations.find(d => d.donationId === labForm.donationId);
+          let updatedDonors = state.donors;
+          if (donation) {
+            updatedDonors = state.donors.map(d => 
+              d.id === donation.donorId 
+                ? { ...d, bloodType: labForm.bloodTypeConfirmed } 
+                : d
+            );
+          }
+
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-003',
+            action: `Encoded Laboratory Test Results for test ${testId}`,
+            module: 'Laboratory',
+            recordId: testId,
+            oldValue: null,
+            newValue: JSON.stringify(newLabResult),
+            performedAt: new Date().toLocaleString()
+          };
+
+          return {
+            labTestResults: [newLabResult, ...state.labTestResults],
+            donors: updatedDonors,
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
       },
 
       addUser: (userForm) => {
         const id = 'USR-' + String(Math.floor(Math.random() * 900) + 100);
-        const newUser = { id, status: 'Active', ...userForm };
-        set((state) => ({ users: [...state.users, newUser] }));
-        return newUser;
+        const now = new Date();
+
+        set((state) => {
+          let finalFirstName = userForm.firstName || '';
+          let finalLastName = userForm.lastName || '';
+          let finalEmail = userForm.email || '';
+          let finalContactNumber = userForm.contactNumber || '';
+
+          // If Hospital User, fetch hospital details and auto-approve the hospital
+          let updatedHospitals = state.hospitals;
+          if (userForm.role === 'Hospital User' && userForm.hospitalId) {
+            const targetHosp = state.hospitals.find(h => h.id === userForm.hospitalId);
+            if (targetHosp) {
+              const nameParts = (targetHosp.contact || 'Hospital Admin').split(' ');
+              finalFirstName = nameParts[0] || 'Hospital';
+              finalLastName = nameParts.slice(1).join(' ') || 'Admin';
+              finalEmail = targetHosp.email || finalEmail;
+              finalContactNumber = targetHosp.phone || finalContactNumber;
+
+              // Automatically mark the affiliated hospital as Active
+              updatedHospitals = state.hospitals.map(h => 
+                h.id === userForm.hospitalId ? { ...h, registrationStatus: 'Active' } : h
+              );
+            }
+          }
+
+          const newUser = {
+            id,
+            roleId: userForm.roleId || null,
+            firstName: finalFirstName,
+            lastName: finalLastName,
+            name: `${finalFirstName} ${finalLastName}`.trim(),
+            email: finalEmail,
+            passwordHash: userForm.passwordHash || '••••••••',
+            contactNumber: finalContactNumber,
+            status: userForm.status || 'Active',
+            role: userForm.role || 'Registry Staff',
+            hospitalId: userForm.hospitalId || null,
+            createdAt: now.toLocaleString(),
+            updatedAt: now.toLocaleString()
+          };
+
+          return {
+            users: [...state.users, newUser],
+            hospitals: updatedHospitals,
+            auditLogs: [{
+              logId: 'LOG-' + Math.floor(100 + Math.random() * 900),
+              userId: state.authSystemUser?.id || 'USR-001',
+              action: `Created new system user ${newUser.name} (${newUser.role})`,
+              module: 'User Management',
+              recordId: id,
+              oldValue: null,
+              newValue: JSON.stringify({ id, role: newUser.role, email: newUser.email }),
+              performedAt: now.toLocaleString()
+            }, ...state.auditLogs]
+          };
+        });
       },
 
       // ─── Blood Requests ─────────────────────────────────────────────────
@@ -432,7 +745,23 @@ export const useBloodStore = create(
           month: 'short', day: 'numeric', year: 'numeric'
         }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-        const newRequest = { ...reqForm, refNo, status: 'Pending', submittedAt: dateString, statusNote: '' };
+        const newRequest = {
+          refNo,
+          hospital: reqForm.hospital || 'Unknown Hospital',
+          hospitalId: reqForm.hospitalId || 'HOSP-001',
+          urgency: reqForm.urgency || 'routine',
+          dateNeeded: reqForm.dateNeeded || '',
+          contactPerson: reqForm.contactPerson || '',
+          contactNumber: reqForm.contactNumber || '',
+          status: 'Pending',
+          submittedAt: dateString,
+          diagnosis: reqForm.diagnosis || '',
+          ward: reqForm.ward || '',
+          notes: reqForm.notes || '',
+          hospitalRefNo: reqForm.hospitalRefNo || '',
+          statusNote: '',
+          items: reqForm.items || [] // Array of { bloodType, component, units }
+        };
         set((state) => ({ bloodRequests: [newRequest, ...state.bloodRequests] }));
         return refNo;
       },
@@ -456,9 +785,39 @@ export const useBloodStore = create(
           const req = state.bloodRequests.find(r => r.refNo === refNo);
           if (!req) return state;
           
-          // Decrement inventory
+          const targetType = req.patientBloodType || req.bloodType;
+          // Find matching available units in bloodInventory
+          const matchedUnits = state.bloodInventory
+            .filter(u => u.bloodTypeId === targetType && u.inventoryStatus === 'Available')
+            .slice(0, req.units);
+
+          // Update inventory status of matched units to 'Issued'
+          const updatedBloodInventory = state.bloodInventory.map(u => {
+            const isMatched = matchedUnits.some(mu => mu.unitId === u.unitId);
+            return isMatched ? { ...u, inventoryStatus: 'Issued' } : u;
+          });
+
+          // Generate issuance transaction (Table 12)
+          const issuanceId = 'ISS-' + Math.floor(100 + Math.random() * 900);
+          const newIssuance = {
+            issuanceId,
+            requestId: refNo,
+            hospitalId: req.hospitalId || 'HOSP-001',
+            processedBy: state.authSystemUser?.id || 'USR-005',
+            issuanceDate: new Date().toISOString(),
+            remarks: 'Approved and issued to hospital ward'
+          };
+
+          // Generate issuance details (Table 13)
+          const newIssuanceDetails = matchedUnits.map(mu => ({
+            detailId: 'DET-' + Math.floor(1000 + Math.random() * 9000),
+            issuanceId,
+            unitId: mu.unitId,
+            quantity: mu.quantity || 450
+          }));
+
+          // Decrement aggregate inventory
           const newInventory = state.inventory.map(item => {
-            const targetType = req.patientBloodType || req.bloodType;
             if (item.type === targetType) {
               const newUnits = Math.max(0, item.units - req.units);
               const status = newUnits < item.threshold ? 'critical' : newUnits === item.threshold ? 'low' : 'safe';
@@ -467,9 +826,159 @@ export const useBloodStore = create(
             return item;
           });
 
+          // Record audit log
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-005',
+            action: `Approved Blood Request ${refNo} (Issued ${matchedUnits.length} bags to ${req.hospital})`,
+            module: 'Issuance',
+            recordId: refNo,
+            oldValue: 'Pending',
+            newValue: 'Approved',
+            performedAt: new Date().toLocaleString()
+          };
+
           return {
             bloodRequests: state.bloodRequests.map(r => r.refNo === refNo ? { ...r, status: 'Approved' } : r),
-            inventory: newInventory
+            bloodInventory: updatedBloodInventory,
+            bloodIssuance: [newIssuance, ...state.bloodIssuance],
+            bloodIssuanceDetails: [...newIssuanceDetails, ...state.bloodIssuanceDetails],
+            inventory: newInventory,
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
+      },
+
+      recordBloodUnit: (unitForm) => {
+        set((state) => {
+          // Auto-generate unitId as an auto-increment integer ID
+          const existingIds = state.bloodInventory.map(u => {
+            const numeric = parseInt(String(u.unitId).replace(/\D/g, ''), 10);
+            return isNaN(numeric) ? 0 : numeric;
+          });
+          const nextNum = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+          const nextUnitId = nextNum; // Plain Auto Increment Integer
+
+          const newUnit = {
+            unitId: nextUnitId,
+            donationId: unitForm.donationId || ('DON-' + Math.floor(100 + Math.random() * 900)),
+            bloodTypeId: unitForm.bloodType || 'O+',
+            componentId: unitForm.component || 'PRBC',
+            collectionDate: unitForm.collectionDate || new Date().toISOString().slice(0, 10),
+            expirationDate: unitForm.expirationDate || new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            quantity: parseFloat(unitForm.quantity) || 450,
+            safetyStatus: unitForm.safetyStatus || 'Cleared',
+            intendedUse: unitForm.intendedUse || 'Transfusable',
+            inventoryStatus: unitForm.inventoryStatus || 'Available',
+            recordedBy: state.authSystemUser?.id || 'USR-004',
+            updatedAt: new Date().toLocaleString()
+          };
+
+          const newInventory = state.inventory.map(item => {
+            if (item.type === newUnit.bloodTypeId && newUnit.safetyStatus === 'Cleared' && newUnit.intendedUse === 'Transfusable') {
+              const componentKey = {
+                'PRBC': 'units',
+                'Platelet Concentrate': 'platelets',
+                'FFP': 'ffp',
+                'Cryoprecipitate': 'cryo',
+                'Cryosupernate': 'cryosup'
+              }[newUnit.componentId];
+              if (componentKey) {
+                const newTotal = (item[componentKey] || 0) + 1;
+                const status = (componentKey === 'units' ? newTotal : item.units) < item.threshold ? 'critical' : (componentKey === 'units' ? newTotal : item.units) === item.threshold ? 'low' : 'safe';
+                return { ...item, [componentKey]: newTotal, status };
+              }
+            }
+            return item;
+          });
+
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-004',
+            action: `Recorded Blood Unit ${newUnit.unitId} (${newUnit.componentId}, ${newUnit.bloodTypeId})`,
+            module: 'Blood Bank',
+            recordId: newUnit.unitId,
+            oldValue: null,
+            newValue: JSON.stringify(newUnit),
+            performedAt: new Date().toLocaleString()
+          };
+
+          return {
+            bloodInventory: [newUnit, ...state.bloodInventory],
+            inventory: newInventory,
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
+      },
+
+      approveRecommendation: (recId) => {
+        set((state) => {
+          const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Approved', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toLocaleString() } : r);
+          
+          const targetRec = state.recommendations.find(r => r.recommendationId === recId);
+          let newInventory = state.inventory;
+          if (targetRec) {
+            const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+            const newAuditLog = {
+              logId: auditLogId,
+              userId: state.authSystemUser?.id || 'USR-002',
+              action: `Approved Distribution Recommendation ${recId} for ${targetRec.hospitalId}`,
+              module: 'Allocation',
+              recordId: recId,
+              oldValue: 'Pending',
+              newValue: 'Approved',
+              performedAt: new Date().toLocaleString()
+            };
+
+            newInventory = state.inventory.map(item => {
+              if (item.type === targetRec.bloodTypeId) {
+                const componentKey = {
+                  'PRBC': 'units',
+                  'Platelet Concentrate': 'platelets',
+                  'FFP': 'ffp',
+                  'Cryoprecipitate': 'cryo',
+                  'Cryosupernate': 'cryosup'
+                }[targetRec.componentId];
+                if (componentKey) {
+                  const newTotal = Math.max(0, (item[componentKey] || 0) - targetRec.recommendedQuantity);
+                  const status = (componentKey === 'units' ? newTotal : item.units) < item.threshold ? 'critical' : (componentKey === 'units' ? newTotal : item.units) === item.threshold ? 'low' : 'safe';
+                  return { ...item, [componentKey]: newTotal, status };
+                }
+              }
+              return item;
+            });
+
+            return {
+              recommendations: updatedRecs,
+              inventory: newInventory,
+              auditLogs: [newAuditLog, ...state.auditLogs]
+            };
+          }
+          return { recommendations: updatedRecs };
+        });
+      },
+
+      rejectRecommendation: (recId) => {
+        set((state) => {
+          const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Rejected', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toLocaleString() } : r);
+          
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-002',
+            action: `Rejected Distribution Recommendation ${recId}`,
+            module: 'Allocation',
+            recordId: recId,
+            oldValue: 'Pending',
+            newValue: 'Rejected',
+            performedAt: new Date().toLocaleString()
+          };
+
+          return {
+            recommendations: updatedRecs,
+            auditLogs: [newAuditLog, ...state.auditLogs]
           };
         });
       },
@@ -525,7 +1034,7 @@ export const useBloodStore = create(
     }),
     { 
       name: 'bloodlink-dvo-store',
-      version: 3,
+      version: 4,
       migrate: () => {
         // On version mismatch, return undefined so the store resets to initialState
         return undefined;

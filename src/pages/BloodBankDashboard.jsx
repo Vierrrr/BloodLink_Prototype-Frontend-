@@ -14,53 +14,30 @@ const INTENDED_USES = ['Transfusable', 'Storage-Research Only', 'Restricted'];
 
 const emptyUnitForm = {
   unitRefId: '',
-  donorId: '',
+  donationId: '',
   bloodType: 'O+',
   component: 'PRBC',
+  collectionDate: new Date().toISOString().slice(0, 10),
+  expirationDate: '',
+  quantity: '450',
   safetyStatus: 'Cleared',
   intendedUse: 'Transfusable',
-  expirationDate: ''
+  inventoryStatus: 'Available'
 };
 
 export default function BloodBankDashboard() {
-  const { donors, inventory, bloodRequests, approveRequest, rejectRequest, updateInventoryUnits } = useBloodStore();
+  const { donors, inventory, bloodRequests, approveRequest, rejectRequest, updateInventoryUnits, recordBloodUnit, bloodInventory, donations } = useBloodStore();
   const [tab, setTab] = useState('inventory'); // 'inventory' | 'requests'
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [unitForm, setUnitForm] = useState(emptyUnitForm);
   const [unitSaved, setUnitSaved] = useState(false);
-
-  const handleDonorIdChange = (e) => {
-    const enteredId = e.target.value;
-    setUnitForm(prev => {
-      const updated = { ...prev, donorId: enteredId };
-      const matchingDonor = donors.find(d => d.id.trim().toLowerCase() === enteredId.trim().toLowerCase());
-      if (matchingDonor) {
-        updated.bloodType = matchingDonor.bloodType;
-      }
-      return updated;
-    });
-  };
+  const [donationSearch, setDonationSearch] = useState('');
 
   const handleUnitSubmit = (e) => {
     e.preventDefault();
-    // Increment the relevant inventory component count
-    const inv = inventory.find(i => i.type === unitForm.bloodType);
-    if (inv && unitForm.safetyStatus === 'Cleared' && unitForm.intendedUse === 'Transfusable') {
-      const componentKey = {
-        'PRBC': 'units',
-        'Platelet Concentrate': 'platelets',
-        'FFP': 'ffp',
-        'Cryoprecipitate': 'cryo',
-        'Cryosupernate': 'cryosup'
-      }[unitForm.component];
-      if (componentKey) {
-        const newTotal = (inv[componentKey] || 0) + 1;
-        // We use a simple copy-update for prototype
-        updateInventoryUnits(unitForm.bloodType, componentKey === 'units' ? newTotal : inv.units);
-      }
-    }
+    recordBloodUnit(unitForm);
     setUnitSaved(true);
-    setTimeout(() => { setUnitSaved(false); setUnitForm(emptyUnitForm); setShowUnitForm(false); }, 2000);
+    setTimeout(() => { setUnitSaved(false); setUnitForm(emptyUnitForm); setShowUnitForm(false); setDonationSearch(''); }, 2000);
   };
 
   // Filter requests that are still Pending
@@ -219,6 +196,73 @@ export default function BloodBankDashboard() {
                   </table>
                 </div>
               </div>
+
+              {/* PHYSICAL BLOOD BAG REGISTRY (Table 9) */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500">
+                    <Database className="w-4 h-4 text-[#C21C24]" /> Physical Blood Bag Registry (Table 9)
+                  </h3>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">
+                    Total: {bloodInventory ? bloodInventory.length : 0} bags
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs font-semibold text-slate-650">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
+                        <th className="px-5 py-3 font-bold">Unit ID</th>
+                        <th className="px-5 py-3 font-bold">Donation ID</th>
+                        <th className="px-5 py-3 font-bold text-center">Type</th>
+                        <th className="px-5 py-3 font-bold">Component</th>
+                        <th className="px-5 py-3 font-bold text-center">Collected</th>
+                        <th className="px-5 py-3 font-bold text-center">Expiry</th>
+                        <th className="px-5 py-3 font-bold text-center">Qty (mL)</th>
+                        <th className="px-5 py-3 font-bold text-center">Safety</th>
+                        <th className="px-5 py-3 font-bold">Intended Use</th>
+                        <th className="px-5 py-3 font-bold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-normal">
+                      {(bloodInventory || []).map(unit => (
+                        <tr key={unit.unitId} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-3 font-mono font-bold text-slate-900">{unit.unitId}</td>
+                          <td className="px-5 py-3 font-mono text-slate-400 text-[10px]">{unit.donationId}</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono shadow-sm">
+                              {unit.bloodTypeId}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 font-bold text-slate-700">{unit.componentId}</td>
+                          <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.collectionDate || '—'}</td>
+                          <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.expirationDate}</td>
+                          <td className="px-5 py-3 text-center font-bold text-slate-800">{unit.quantity} mL</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              unit.safetyStatus === 'Cleared' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              unit.safetyStatus === 'Hold-Quarantined' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                              'bg-rose-50 text-rose-700 border border-rose-100'
+                            }`}>
+                              {unit.safetyStatus}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 font-medium text-slate-600">{unit.intendedUse}</td>
+                          <td className="px-5 py-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              unit.inventoryStatus === 'Available' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                              unit.inventoryStatus === 'Issued' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              unit.inventoryStatus === 'Expired' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {unit.inventoryStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -339,91 +383,160 @@ export default function BloodBankDashboard() {
         </main>
       </div>
 
-      {/* ── RECORD BLOOD UNIT MODAL ── */}
+      {/* ── RECORD BLOOD UNIT MODAL (Table 9) ── */}
       {showUnitForm && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-[#C21C24]" />
-                <h3 className="font-bold text-slate-900 text-sm">Record Blood Unit</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-white rounded-t-2xl flex-shrink-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Blood Bank Staff · Table 9: Blood Inventory</p>
+              <div className="flex items-center justify-between mt-0.5">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#C21C24]" />
+                  <h3 className="font-bold text-slate-900 text-sm">Record Blood Unit</h3>
+                </div>
+                <button onClick={() => { setShowUnitForm(false); setDonationSearch(''); }} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button onClick={() => setShowUnitForm(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100">
-                <X className="w-5 h-5" />
-              </button>
             </div>
-            <form onSubmit={handleUnitSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unit Reference ID</label>
-                  <input type="text" required value={unitForm.unitRefId} onChange={e => setUnitForm({ ...unitForm, unitRefId: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" placeholder="e.g. BU-2024-001" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Donor ID</label>
-                  <input type="text" value={unitForm.donorId} onChange={handleDonorIdChange}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" placeholder="e.g. D001" />
-                </div>
+
+            <form onSubmit={handleUnitSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+
+              {/* Row 1: Link Donation ID / Donor (Full Width) */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Link Donation ID / Donor <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="Search Donor Name, ID, or Donation ID..."
+                  value={donationSearch}
+                  onChange={e => { setDonationSearch(e.target.value); setUnitForm({ ...unitForm, donationId: '' }); }}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none"
+                />
               </div>
-              {/* Linked Donor Info Visual Indicator */}
+
+              {/* Donation record selector with Donor Name lookup */}
               {(() => {
-                const searchId = (unitForm.donorId || '').trim().toLowerCase();
-                const matchedDonor = searchId ? (donors || []).find(d => d.id && d.id.trim().toLowerCase() === searchId) : null;
-                return matchedDonor ? (
-                  <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 flex items-center justify-between text-xs animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Linked Donor Found</span>
-                      <span className="font-bold text-slate-800">{matchedDonor.name}</span>
-                      <span className="text-[10px] text-slate-500 font-medium">Status: <span className="font-bold text-slate-700">{matchedDonor.status}</span></span>
-                    </div>
-                    <div className="text-right">
-                      <span className="px-2.5 py-1 bg-white border border-emerald-200 text-[#C21C24] font-black rounded-lg text-xs font-mono shadow-sm">
-                        {matchedDonor.bloodType}
-                      </span>
-                    </div>
+                const q = donationSearch.toLowerCase().trim();
+                // If query is empty or matches the currently selected/active donation, hide suggestions
+                if (!q || (unitForm.donationId && donationSearch.includes(unitForm.donationId))) return null;
+
+                const filtered = (donations || []).map(d => {
+                  const donor = (donors || []).find(donorObj => donorObj.id.toLowerCase() === d.donorId.toLowerCase());
+                  return { ...d, donorName: donor ? donor.name : 'Unknown Donor' };
+                }).filter(d => {
+                  return d.donationId.toLowerCase().includes(q) || 
+                         d.donorId.toLowerCase().includes(q) || 
+                         d.donorName.toLowerCase().includes(q);
+                });
+
+                if (filtered.length === 0) return (
+                  <p className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+                    No matching donation records found.
+                  </p>
+                );
+
+                return (
+                  <div className="border border-slate-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-slate-100 shadow-inner">
+                    {filtered.map(d => (
+                      <button key={d.donationId} type="button"
+                        onClick={() => {
+                          setUnitForm(f => ({ ...f, donationId: d.donationId, bloodType: d.bloodTypeId || f.bloodType }));
+                          setDonationSearch(`${d.donorName} (${d.donationId})`);
+                        }}
+                        className={`w-full text-left p-2.5 text-xs flex justify-between items-center transition-all hover:bg-slate-50 ${
+                          unitForm.donationId === d.donationId ? 'bg-red-50 border-l-4 border-red-600 font-bold text-red-900' : 'text-slate-700'
+                        }`}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-slate-800 text-xs">{d.donorName}</span>
+                          <span className="text-[10px] text-slate-400">Donor ID: {d.donorId} · Date: {d.donationDate}</span>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1">
+                          <span className="font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                            {d.donationId}
+                          </span>
+                          {d.bloodTypeId && (
+                            <span className="px-1.5 py-0.5 bg-rose-50 text-[#C21C24] font-black rounded text-[9px] font-mono border border-rose-100">
+                              {d.bloodTypeId}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                ) : searchId ? (
-                  <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-700">
-                    ⚠ No donor profile found matching ID "<span className="font-mono font-bold">{unitForm.donorId}</span>"
-                  </div>
-                ) : null;
+                );
               })()}
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Row 2: Blood Type + Component */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type <span className="text-rose-500">*</span></label>
                   <select required value={unitForm.bloodType} onChange={e => setUnitForm({ ...unitForm, bloodType: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
                     {BLOOD_TYPES.map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Component</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Component <span className="text-rose-500">*</span></label>
                   <select required value={unitForm.component} onChange={e => setUnitForm({ ...unitForm, component: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
                     {COMPONENTS.map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Row 3: Collection Date + Expiration Date */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Safety Status</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date <span className="text-rose-500">*</span></label>
+                  <input type="date" required value={unitForm.collectionDate}
+                    onChange={e => setUnitForm({ ...unitForm, collectionDate: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expiration Date <span className="text-rose-500">*</span></label>
+                  <input type="date" required value={unitForm.expirationDate}
+                    onChange={e => setUnitForm({ ...unitForm, expirationDate: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" />
+                </div>
+              </div>
+
+              {/* Row 4: Quantity */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Quantity / Volume (mL) <span className="text-rose-500">*</span></label>
+                <input type="number" required min="1" step="0.01" value={unitForm.quantity}
+                  onChange={e => setUnitForm({ ...unitForm, quantity: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none"
+                  placeholder="e.g. 450" />
+              </div>
+
+              {/* Row 5: Safety Status + Intended Use */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Safety Status <span className="text-rose-500">*</span></label>
                   <select required value={unitForm.safetyStatus} onChange={e => setUnitForm({ ...unitForm, safetyStatus: e.target.value })}
-                    className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${unitForm.safetyStatus !== 'Cleared' ? 'border-amber-200 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200 bg-white focus:ring-2 focus:ring-[#C21C24]'}`}>
+                    className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${
+                      unitForm.safetyStatus !== 'Cleared' ? 'border-amber-200 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200 bg-white focus:ring-2 focus:ring-[#C21C24]'
+                    }`}>
                     {SAFETY_STATUSES.map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Intended Use</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Intended Use <span className="text-rose-500">*</span></label>
                   <select required value={unitForm.intendedUse} onChange={e => setUnitForm({ ...unitForm, intendedUse: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
                     {INTENDED_USES.map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
               </div>
+
+              {/* Row 6: Inventory Status */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expiration Date</label>
-                <input type="date" required value={unitForm.expirationDate} onChange={e => setUnitForm({ ...unitForm, expirationDate: e.target.value })}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" />
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Inventory Status <span className="text-rose-500">*</span></label>
+                <select required value={unitForm.inventoryStatus} onChange={e => setUnitForm({ ...unitForm, inventoryStatus: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                  {['Available', 'Issued', 'Expired', 'Discarded'].map(v => <option key={v}>{v}</option>)}
+                </select>
               </div>
 
               {unitSaved && (
