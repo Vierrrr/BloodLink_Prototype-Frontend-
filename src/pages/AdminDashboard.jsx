@@ -64,8 +64,11 @@ export default function AdminDashboard() {
   const granularForecasts = useBloodStore((state) => state.granularForecasts) ?? [];
   const addUser = useBloodStore((state) => state.addUser);
   const recommendations = useBloodStore((state) => state.recommendations);
+  const donorRecalls = useBloodStore((state) => state.donorRecalls) ?? [];
+  const dispatchRecallSMS = useBloodStore((state) => state.dispatchRecallSMS);
   const approveRecommendation = useBloodStore((state) => state.approveRecommendation);
   const rejectRecommendation = useBloodStore((state) => state.rejectRecommendation);
+  const generateRecommendationsFromForecast = useBloodStore((state) => state.generateRecommendationsFromForecast);
   const auditLogs = useBloodStore((state) => state.auditLogs);
   const donationEvents = useBloodStore((state) => state.donationEvents);
   const addDonationEvent = useBloodStore((state) => state.addDonationEvent);
@@ -185,7 +188,7 @@ export default function AdminDashboard() {
     inventory: 'Monitors available blood stocks and components',
     issuance: 'Records blood distribution transactions to hospitals',
     hospitals: 'Maintains partner hospital information',
-    forecasting: 'Predicts future blood demand using Regression-Enhanced Forecasting',
+    forecasting: 'Predicts future blood demand using Multiple Linear Regression (MLR)',
     distribution: 'Equity-based blood allocation to partner hospitals',
     recall: 'Automates donor recall after the required eligibility period',
     reports: 'Generates operational reports',
@@ -437,14 +440,29 @@ export default function AdminDashboard() {
   };
 
   const dispatchEligibilityReminders = () => {
-    dispatchSMSLog(
-      'Roberto T. Garcia', 
-      '+63 920 456 7890', 
-      'Hello Roberto. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.', 
-      '#8B5CF6', 
-      'RG'
-    );
-    alert('SMS reminders sent successfully via Semaphore Philippine Gateway!');
+    // Detect eligible donors matching the 85-90 day window
+    const eligibleDonors = donors.map(donor => {
+      const today = new Date('2026-06-27');
+      const lastDonationDate = new Date(donor.lastDonation);
+      const diffTime = Math.abs(today - lastDonationDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return { ...donor, diffDays };
+    }).filter(donor => donor.diffDays >= 85 && donor.diffDays <= 90);
+
+    if (eligibleDonors.length === 0) {
+      alert('No eligible donors in the 85–90 day interval found to recall today.');
+      return;
+    }
+
+    // Dispatch recall log record for each eligible donor
+    eligibleDonors.forEach(donor => {
+      dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
+      // Also log to the general SMS gateway log
+      const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
+      dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n=>n[0]).join(''));
+    });
+
+    alert(`Successfully dispatched recall alerts to ${eligibleDonors.length} eligible donors via Semaphore Gateway!`);
     setReEligibilityComplete(false);
   };
 
@@ -834,46 +852,160 @@ export default function AdminDashboard() {
 
           {/* TAB: DONOR RECALL (CAPSTONE) */}
           {tab === 'recall' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Eligible Donor Detection (Donor Recall)</h3>
-                  <p className="text-xs text-slate-500 mt-1">Automated donor recall after the required 85-90 day eligibility period.</p>
+            <div className="space-y-6 fade-in">
+              {/* Top Panel: Scan & Trigger Section */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Eligible Donor Detection (Donor Recall)</h3>
+                    <p className="text-xs text-slate-500 mt-1">Detects donors whose last donation was 85–90 days ago and triggers SMS notifications.</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSmsConfirmModal(true)}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Dispatch SMS Recall
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setShowSmsConfirmModal(true)}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2"
-                >
-                  <Send className="w-3.5 h-3.5" /> Dispatch SMS Recall
-                </button>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 text-left">Donor Name</th>
+                        <th className="px-6 py-3 text-left">Blood Type</th>
+                        <th className="px-6 py-3 text-left">Last Donation Date</th>
+                        <th className="px-6 py-3 text-left">Days Since Donation</th>
+                        <th className="px-6 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                      {(() => {
+                        const eligible = donors.map(donor => {
+                          const today = new Date('2026-06-27');
+                          const lastDonationDate = new Date(donor.lastDonation);
+                          const diffTime = Math.abs(today - lastDonationDate);
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          return { ...donor, diffDays };
+                        }).filter(donor => donor.diffDays >= 85 && donor.diffDays <= 90);
+
+                        if (eligible.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="5" className="px-6 py-8 text-center text-slate-400">
+                                No eligible donors currently in the 85–90 day recall window.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return eligible.map(donor => (
+                          <tr key={donor.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-3.5 font-bold text-slate-900">{donor.name}</td>
+                            <td className="px-6 py-3.5">
+                              <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span>
+                            </td>
+                            <td className="px-6 py-3.5 text-slate-650">{donor.lastDonation}</td>
+                            <td className="px-6 py-3.5 text-amber-600 font-extrabold">{donor.diffDays} Days</td>
+                            <td className="px-6 py-3.5 text-center">
+                              <button
+                                onClick={() => {
+                                  dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
+                                  const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
+                                  dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n=>n[0]).join(''));
+                                  alert(`Recall SMS sent to ${donor.name}!`);
+                                }}
+                                className="bg-[#C21C24] text-white text-[10px] px-2.5 py-1 rounded font-bold hover:bg-[#A8181F] transition"
+                              >
+                                Send Recall
+                              </button>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                    <tr>
-                      <th className="px-6 py-3 text-left">Donor Name</th>
-                      <th className="px-6 py-3 text-left">Blood Type</th>
-                      <th className="px-6 py-3 text-left">Last Donation Date</th>
-                      <th className="px-6 py-3 text-left">Days Since Donation</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                    {donors.map(donor => {
-                      const today = new Date('2026-06-27');
-                      const lastDonationDate = new Date(donor.lastDonation);
-                      const diffTime = Math.abs(today - lastDonationDate);
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      return { ...donor, diffDays };
-                    }).filter(donor => donor.diffDays >= 85 && donor.diffDays <= 90).map(donor => (
-                        <tr key={donor.id} className="hover:bg-slate-50/50">
-                          <td className="px-6 py-4 font-bold text-slate-900">{donor.name}</td>
-                          <td className="px-6 py-4"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span></td>
-                          <td className="px-6 py-4 text-slate-600">{donor.lastDonation}</td>
-                          <td className="px-6 py-4 text-amber-600 font-bold">{donor.diffDays} Days</td>
+
+              {/* Bottom Panel: Historical Log Table (Matching Table 16 Schema) */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">Recall Logs History</h3>
+                    <p className="text-xs text-slate-500 mt-1">Logs showing SMS dispatch status, donor responses, and initiating staff.</p>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">Table: donor_recalls</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 text-left">Recall ID</th>
+                        <th className="px-6 py-3 text-left">Donor</th>
+                        <th className="px-6 py-3 text-left">Recall Date</th>
+                        <th className="px-6 py-3 text-center">SMS Status</th>
+                        <th className="px-6 py-3 text-center">Donor Response</th>
+                        <th className="px-6 py-3 text-left">Processed By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      {donorRecalls.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="px-6 py-8 text-center text-slate-400">
+                            No dispatch history logged yet.
+                          </td>
                         </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      ) : (
+                        donorRecalls.map(r => {
+                          const donorObj = donors.find(d => d.id === r.donorId);
+                          const userObj = users.find(u => u.id === r.processedBy);
+                          return (
+                            <tr key={r.recallId} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-3.5 font-mono text-slate-400 text-[10px]">{r.recallId}</td>
+                              <td className="px-6 py-3.5">
+                                <p className="font-bold text-slate-900">{donorObj?.name || 'Unknown Donor'}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">{r.donorId}</p>
+                              </td>
+                              <td className="px-6 py-3.5 font-mono text-slate-500">{r.recallDate}</td>
+                              <td className="px-6 py-3.5 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                  r.smsStatus === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                  r.smsStatus === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                  'bg-amber-50 border-amber-100 text-amber-700'
+                                }`}>
+                                  {r.smsStatus}
+                                </span>
+                              </td>
+                              <td className="px-6 py-3.5 text-center">
+                                {r.donorResponse ? (
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                    r.donorResponse === 'Committed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                    r.donorResponse === 'Declined' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                    'bg-slate-50 border-slate-200 text-slate-650'
+                                  }`}>
+                                    {r.donorResponse}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 font-normal italic">Waiting Response</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-3.5 text-slate-650">
+                                {r.processedBy ? (
+                                  <div>
+                                    <p className="font-bold text-slate-700">{userObj?.name || r.processedBy}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">{userObj?.role || 'Staff'}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded text-[9px] font-bold">🤖 Automated System</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -1051,15 +1183,17 @@ export default function AdminDashboard() {
           {tab === 'donors' && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
-                <div className="relative flex-grow max-w-md">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <div className="search">
                   <input 
                     type="text" 
-                    placeholder="Search registry by name or blood type..."
-                    className="w-full border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition outline-none bg-slate-50/50"
+                    placeholder="Search registry..."
+                    className="search__input text-xs"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  <button className="search__button" type="button">
+                    <Search className="search__icon" />
+                  </button>
                 </div>
                 <button 
                   onClick={() => setFlaggedStatus(!accountFlagged)}
@@ -1128,39 +1262,121 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: SMS LOGS */}
-          {tab === 'smslog' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in flex flex-col">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 text-xs tracking-tight">Semaphore Transaction ledger</h3>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{smsLogs.length} logs dispatched today</span>
+      {/* TAB: SMS LOGS — Table 17 Schema */}
+      {tab === 'smslog' && (
+        <div className="space-y-5 fade-in">
+          {/* Stats bar */}
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Total Sent', value: smsLogs.filter(l => l.status === 'Sent').length, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'Failed', value: smsLogs.filter(l => l.status === 'Failed').length, color: 'text-[#C21C24]', bg: 'bg-rose-50', border: 'border-rose-100' },
+              { label: 'Pending', value: smsLogs.filter(l => l.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+            ].map(stat => (
+              <div key={stat.label} className={`${stat.bg} border ${stat.border} rounded-xl p-4`}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
+                <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">SMS deliveries</p>
               </div>
+            ))}
+          </div>
+
+          {/* Full Table */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm tracking-tight">SMS Gateway Transaction Log</h3>
+                <p className="text-xs text-slate-500 mt-1">All SMS delivery attempts via the configured gateway. Failed entries include error details.</p>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">Table: sms_logs</span>
+            </div>
+            <div className="overflow-x-auto">
               {smsLogs.length === 0 ? (
                 <div className="px-5 py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center">
                   <MessageSquare className="w-8 h-8 text-slate-300 mb-2" />
                   <span>No SMS transaction records located.</span>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 text-xs font-semibold text-slate-655">
-                  {smsLogs.map((log, i) => (
-                    <div key={i} className="p-5 hover:bg-slate-50/50 transition-colors flex items-start gap-4">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: log.color }}>
-                        {log.initials}
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="font-bold text-slate-900">{log.name} <span className="font-mono text-[10px] text-slate-400 font-normal">({log.phone})</span></p>
-                          <span className="text-[10px] text-slate-400 font-semibold">{log.time}</span>
-                        </div>
-                        <p className="bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-[10px] text-slate-600 leading-relaxed max-w-3xl">{log.msg}</p>
-                      </div>
-                      <span className="text-[10px] bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded flex-shrink-0">Delivered</span>
-                    </div>
-                  ))}
-                </div>
+                <table className="min-w-full text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-5 py-3 text-left">SMS ID</th>
+                      <th className="px-5 py-3 text-left">Donor</th>
+                      <th className="px-5 py-3 text-left">Recall ID</th>
+                      <th className="px-5 py-3 text-left">Message</th>
+                      <th className="px-5 py-3 text-left">Sent At</th>
+                      <th className="px-5 py-3 text-center">Status</th>
+                      <th className="px-5 py-3 text-left">Error Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                    {smsLogs.map((log, i) => (
+                      <tr key={log.smsId || i} className="hover:bg-slate-50/50 transition-colors">
+                        {/* SMS ID */}
+                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400">{log.smsId || '—'}</td>
+
+                        {/* Donor */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: log.color || '#94a3b8' }}>
+                              {log.initials}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 whitespace-nowrap">{log.name}</p>
+                              <p className="text-[10px] text-slate-400 font-mono">{log.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Recall ID */}
+                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">
+                          {log.recallId || <span className="italic font-normal text-slate-300">none</span>}
+                        </td>
+
+                        {/* Message */}
+                        <td className="px-5 py-3.5 max-w-xs">
+                          <p className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-[10px] text-slate-600 leading-relaxed line-clamp-2">
+                            {log.message || log.msg}
+                          </p>
+                        </td>
+
+                        {/* Sent At */}
+                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">
+                          {log.sentAt ? (
+                            <>
+                              <p>{log.sentAt.split('T')[0]}</p>
+                              <p className="text-slate-400">{log.sentAt.split('T')[1]}</p>
+                            </>
+                          ) : log.time || '—'}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-3.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
+                            log.status === 'Sent'    ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                            log.status === 'Failed'  ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                            log.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                                       'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          }`}>
+                            {log.status || 'Sent'}
+                          </span>
+                        </td>
+
+                        {/* Error Details */}
+                        <td className="px-5 py-3.5 max-w-xs">
+                          {log.errorMessage
+                            ? <p className="bg-rose-50 border border-rose-100 text-[#C21C24] rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed font-mono">{log.errorMessage}</p>
+                            : <span className="text-slate-300 italic font-normal">—</span>
+                          }
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
           {/* TAB: BLOOD ISSUANCE */}
           {tab === 'issuance' && (
@@ -1477,10 +1693,10 @@ export default function AdminDashboard() {
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm mb-1">Regression-Enhanced Moving Average (REMA) Forecasting Engine</p>
+                    <p className="font-bold text-sm mb-1">Multiple Linear Regression (MLR) Forecasting Engine</p>
                     <p className="text-slate-300 text-xs leading-relaxed">
-                      Computed per <strong className="text-white">hospital × blood type × component</strong> from 8 weeks of historical issuance data.
-                      Algorithm: <span className="text-blue-300 font-mono text-[10px]">predicted = MA4 + (OLS_slope × weeks_ahead)</span> with ±8% confidence band.
+                      Computed per <strong className="text-white">hospital × blood type × component</strong> using a multivariate OLS matrix solver.
+                      Algorithm: <span className="text-blue-300 font-mono text-[10px]">y_pred = b0 + b1 * week + b2 * hospScale + b3 * compWeight</span> mixed with MA4, with ±8% confidence bands.
                       The <strong className="text-white">Overview</strong> chart shows the total system-wide demand the blood bank must prepare for.
                       Use filters to drill down per hospital or blood type.
                     </p>
@@ -1549,9 +1765,14 @@ export default function AdminDashboard() {
 
                 {!hasData && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center">
-                    <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="font-bold text-slate-500 text-sm">Generating forecast…</p>
-                    <p className="text-xs text-slate-400 mt-1">The REMA algorithm is computing predictions for all hospital combinations.</p>
+                    <div className="loading py-4 flex justify-center mb-3">
+                      <svg width="64px" height="48px" viewBox="0 0 48 48">
+                        <polyline points="0.15, 24 16.15, 24 20.15, 12 24.15, 36 28.15, 18 32.15, 30 36.15, 24 47.85, 24" id="back"></polyline>
+                        <polyline points="0.15, 24 16.15, 24 20.15, 12 24.15, 36 28.15, 18 32.15, 30 36.15, 24 47.85, 24" id="front"></polyline>
+                      </svg>
+                    </div>
+                    <p className="font-bold text-slate-700 text-sm">Processing OLS Matrix Solver…</p>
+                    <p className="text-xs text-slate-400 mt-1">Solving coefficients for the Multiple Linear Regression model.</p>
                   </div>
                 )}
 
@@ -1860,76 +2081,184 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 {/* PERSISTENT RECOMMENDATIONS REQUIRING APPROVAL (Table 15) */}
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden space-y-4">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500">
-                      <Database className="w-4 h-4 text-[#C21C24]" /> Pending Distribution Recommendations (Table 15)
-                    </h3>
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                  {/* Header */}
+                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                        <Database className="w-4 h-4 text-[#C21C24]" /> Distribution Recommendations
+                        <span className="text-[10px] font-mono text-slate-400 ml-1">Table 15</span>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Output of the Equity-Based Allocation algorithm. Nothing takes effect until an Administrator explicitly approves it.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (granularForecasts.length === 0) {
+                          generateGranularForecast(4);
+                          setTimeout(() => generateRecommendationsFromForecast(), 100);
+                        } else {
+                          generateRecommendationsFromForecast();
+                        }
+                      }}
+                      className="flex items-center gap-2 bg-[#C21C24] hover:bg-[#A8181F] text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-sm"
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      Generate from Latest Forecast
+                    </button>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-left border-collapse text-xs font-semibold text-slate-650">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
-                          <th className="px-6 py-3 font-bold">Recommendation ID</th>
-                          <th className="px-6 py-3 font-bold">Hospital</th>
-                          <th className="px-6 py-3 font-bold text-center">Blood Type</th>
-                          <th className="px-6 py-3 font-bold">Component</th>
-                          <th className="px-6 py-3 font-bold text-center">Suggested Quantity</th>
-                          <th className="px-6 py-3 font-bold">Status</th>
-                          <th className="px-6 py-3 text-center font-bold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-normal">
-                        {(recommendations || []).map(rec => {
-                          const hosp = hospitals.find(h => h.id === rec.hospitalId);
-                          return (
-                            <tr key={rec.recommendationId} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="px-6 py-3 font-mono font-bold text-slate-900">{rec.recommendationId}</td>
-                              <td className="px-6 py-3 font-bold text-slate-800">{hosp?.name || rec.hospitalId}</td>
-                              <td className="px-6 py-3 text-center">
-                                <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono shadow-sm">
-                                  {rec.bloodTypeId}
-                                </span>
-                              </td>
-                              <td className="px-6 py-3 font-bold text-slate-700">{rec.componentId}</td>
-                              <td className="px-6 py-3 text-center font-mono font-bold text-slate-900">{rec.recommendedQuantity} bags</td>
-                              <td className="px-6 py-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                  rec.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
-                                  'bg-amber-50 text-amber-700 border border-amber-100'
-                                }`}>
-                                  {rec.status}
-                                </span>
-                              </td>
-                              <td className="px-6 py-3">
-                                {rec.status === 'Pending' ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => approveRecommendation(rec.recommendationId)}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-1 rounded transition cursor-pointer"
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      onClick={() => rejectRecommendation(rec.recommendationId)}
-                                      className="bg-white border border-rose-200 text-[#C21C24] hover:bg-rose-50 font-bold text-[10px] px-3 py-1 rounded transition cursor-pointer"
-                                    >
-                                      Reject
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="text-center text-[10px] text-slate-400 font-medium">
-                                    Processed by {rec.approvedBy} at {rec.actedAt}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+
+                  {/* Status filter tabs */}
+                  {(() => {
+                    const allRecs = recommendations || [];
+                    const counts = {
+                      All: allRecs.length,
+                      Pending: allRecs.filter(r => r.status === 'Pending').length,
+                      Approved: allRecs.filter(r => r.status === 'Approved').length,
+                      Rejected: allRecs.filter(r => r.status === 'Rejected').length,
+                    };
+                    const [recFilter, setRecFilter] = window.__recFilterState || [null, null];
+                    // Use local state via a simple trick — read from dataset
+                    const activeFilter = document.getElementById('rec-filter-active')?.dataset?.filter || 'All';
+
+                    const filtered = activeFilter === 'All' ? allRecs :
+                      allRecs.filter(r => r.status === activeFilter);
+
+                    return (
+                      <>
+                        <div className="px-6 pt-3 pb-0 flex gap-2 border-b border-slate-100">
+                          {['All', 'Pending', 'Approved', 'Rejected'].map(f => (
+                            <button
+                              key={f}
+                              id={f === 'All' ? 'rec-filter-active' : undefined}
+                              data-filter={f === activeFilter ? f : undefined}
+                              onClick={e => {
+                                // Toggle active filter via DOM dataset
+                                document.getElementById('rec-filter-active')?.removeAttribute('id');
+                                e.currentTarget.id = 'rec-filter-active';
+                                e.currentTarget.dataset.filter = f;
+                                // Force re-render by dispatching a harmless state update
+                                document.getElementById('rec-filter-active').dispatchEvent(new Event('change', { bubbles: true }));
+                              }}
+                              className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition -mb-px ${
+                                activeFilter === f
+                                  ? 'border-[#C21C24] text-[#C21C24]'
+                                  : 'border-transparent text-slate-400 hover:text-slate-600'
+                              }`}
+                            >
+                              {f} <span className="ml-1 bg-slate-100 px-1 rounded font-mono">{counts[f]}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          {allRecs.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-slate-400 text-xs">
+                              <Activity className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                              <p>No recommendations yet. Click <strong>Generate from Latest Forecast</strong> to create recommendations from the MLR forecast output.</p>
+                            </div>
+                          ) : (
+                            <table className="min-w-full text-left text-xs font-semibold text-slate-650">
+                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                  <th className="px-5 py-3 text-left">Rec. ID</th>
+                                  <th className="px-5 py-3 text-left">Forecast ID</th>
+                                  <th className="px-5 py-3 text-left">Hospital</th>
+                                  <th className="px-5 py-3 text-center">Blood Type</th>
+                                  <th className="px-5 py-3 text-left">Component</th>
+                                  <th className="px-5 py-3 text-center">Qty</th>
+                                  <th className="px-5 py-3 text-left">Date Generated</th>
+                                  <th className="px-5 py-3 text-center">Status</th>
+                                  <th className="px-5 py-3 text-center">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {allRecs.map(rec => {
+                                  const hosp = hospitals.find(h => h.id === rec.hospitalId);
+                                  return (
+                                    <tr key={rec.recommendationId} className="hover:bg-slate-50/50 transition-colors">
+                                      {/* Rec ID */}
+                                      <td className="px-5 py-3 font-mono font-bold text-slate-900 text-[10px]">{rec.recommendationId}</td>
+
+                                      {/* Forecast ID — FK link */}
+                                      <td className="px-5 py-3">
+                                        <span className="font-mono text-[10px] bg-blue-50 border border-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                          #{rec.forecastId}
+                                        </span>
+                                      </td>
+
+                                      {/* Hospital */}
+                                      <td className="px-5 py-3 font-bold text-slate-800 whitespace-nowrap">
+                                        {rec.hospitalName || hosp?.name || rec.hospitalId}
+                                      </td>
+
+                                      {/* Blood Type */}
+                                      <td className="px-5 py-3 text-center">
+                                        <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">
+                                          {rec.bloodTypeId}
+                                        </span>
+                                      </td>
+
+                                      {/* Component */}
+                                      <td className="px-5 py-3 text-slate-700">{rec.componentId}</td>
+
+                                      {/* Qty */}
+                                      <td className="px-5 py-3 text-center font-mono font-bold text-slate-900">
+                                        {rec.recommendedQuantity}
+                                        <span className="text-[9px] text-slate-400 ml-1">bags</span>
+                                      </td>
+
+                                      {/* Date Generated */}
+                                      <td className="px-5 py-3 font-mono text-[10px] text-slate-500">
+                                        {rec.recommendationDate || '—'}
+                                      </td>
+
+                                      {/* Status */}
+                                      <td className="px-5 py-3 text-center">
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
+                                          rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                          rec.status === 'Rejected' ? 'bg-rose-50 text-[#C21C24] border-rose-100' :
+                                          'bg-amber-50 text-amber-700 border-amber-100'
+                                        }`}>
+                                          {rec.status}
+                                        </span>
+                                      </td>
+
+                                      {/* Actions */}
+                                      <td className="px-5 py-3">
+                                        {rec.status === 'Pending' ? (
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button
+                                              onClick={() => approveRecommendation(rec.recommendationId)}
+                                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-1 rounded transition"
+                                            >
+                                              Approve
+                                            </button>
+                                            <button
+                                              onClick={() => rejectRecommendation(rec.recommendationId)}
+                                              className="bg-white border border-rose-200 text-[#C21C24] hover:bg-rose-50 font-bold text-[10px] px-3 py-1 rounded transition"
+                                            >
+                                              Reject
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className="text-center text-[10px] text-slate-400">
+                                            <p className="font-bold text-slate-600">{rec.approvedBy || '—'}</p>
+                                            <p className="font-mono">{rec.actedAt ? rec.actedAt.replace('T', ' ') : ''}</p>
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
               </div>

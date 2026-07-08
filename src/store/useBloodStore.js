@@ -168,14 +168,132 @@ const initialBloodInventory = [
 ];
 
 const initialRecommendations = [
-  { recommendationId: 'REC-001', forecastId: 'FOR-001', hospitalId: 'HOSP-001', bloodTypeId: 'O+', componentId: 'PRBC', recommendedQuantity: 14, recommendationDate: '2026-07-02', status: 'Pending', approvedBy: null, actedAt: null }
+  {
+    recommendationId: 'REC-001',
+    forecastId: 1,   // FK → granularForecasts[0].forecastId
+    hospitalId: 'HOSP-001',
+    hospitalName: 'Southern Philippines Medical Center (SPMC)',
+    bloodTypeId: 'O+',
+    componentId: 'PRBC',
+    recommendedQuantity: 14,
+    recommendationDate: '2026-07-02',
+    status: 'Approved',
+    approvedBy: 'USR-002',
+    actedAt: '2026-07-02T10:14:00'
+  },
+  {
+    recommendationId: 'REC-002',
+    forecastId: 2,
+    hospitalId: 'HOSP-002',
+    hospitalName: 'Davao Doctors Hospital',
+    bloodTypeId: 'A+',
+    componentId: 'PRBC',
+    recommendedQuantity: 9,
+    recommendationDate: '2026-07-02',
+    status: 'Approved',
+    approvedBy: 'USR-002',
+    actedAt: '2026-07-02T10:15:30'
+  },
+  {
+    recommendationId: 'REC-003',
+    forecastId: 3,
+    hospitalId: 'HOSP-001',
+    hospitalName: 'Southern Philippines Medical Center (SPMC)',
+    bloodTypeId: 'B+',
+    componentId: 'Platelet Concentrate',
+    recommendedQuantity: 6,
+    recommendationDate: '2026-07-02',
+    status: 'Rejected',
+    approvedBy: 'USR-001',
+    actedAt: '2026-07-02T11:00:00'
+  },
+  {
+    recommendationId: 'REC-004',
+    forecastId: 4,
+    hospitalId: 'HOSP-003',
+    hospitalName: 'San Pedro Hospital of Davao City',
+    bloodTypeId: 'O-',
+    componentId: 'FFP',
+    recommendedQuantity: 5,
+    recommendationDate: '2026-07-07',
+    status: 'Pending',
+    approvedBy: null,
+    actedAt: null
+  },
+  {
+    recommendationId: 'REC-005',
+    forecastId: 5,
+    hospitalId: 'HOSP-002',
+    hospitalName: 'Davao Doctors Hospital',
+    bloodTypeId: 'AB+',
+    componentId: 'PRBC',
+    recommendedQuantity: 3,
+    recommendationDate: '2026-07-07',
+    status: 'Pending',
+    approvedBy: null,
+    actedAt: null
+  },
+  {
+    recommendationId: 'REC-006',
+    forecastId: 6,
+    hospitalId: 'HOSP-001',
+    hospitalName: 'Southern Philippines Medical Center (SPMC)',
+    bloodTypeId: 'O+',
+    componentId: 'FFP',
+    recommendedQuantity: 7,
+    recommendationDate: '2026-07-07',
+    status: 'Pending',
+    approvedBy: null,
+    actedAt: null
+  }
 ];
 
 const initialAuditLogs = [
   { logId: 'LOG-001', userId: 'USR-002', action: 'Login successful', module: 'Auth', recordId: 'USR-002', oldValue: null, newValue: null, performedAt: 'July 2, 2026, 8:44 AM' }
 ];
 
-const initialDonorRecalls = [];
+const initialDonorRecalls = [
+  {
+    recallId: 'REC-L001',
+    donorId: 'D001',
+    recallDate: '2026-06-10',
+    smsStatus: 'Sent',
+    donorResponse: 'Committed',
+    processedBy: null // System-automated
+  },
+  {
+    recallId: 'REC-L002',
+    donorId: 'D002',
+    recallDate: '2026-06-15',
+    smsStatus: 'Sent',
+    donorResponse: 'No Response',
+    processedBy: null // System-automated
+  },
+  {
+    recallId: 'REC-L003',
+    donorId: 'D003',
+    recallDate: '2026-06-20',
+    smsStatus: 'Failed',
+    donorResponse: null,
+    processedBy: 'USR-003' // Manually triggered by Nurse Joy Cruz
+  },
+  {
+    recallId: 'REC-L004',
+    donorId: 'D004',
+    recallDate: '2026-06-25',
+    smsStatus: 'Sent',
+    donorResponse: 'Committed',
+    processedBy: 'USR-002' // Manually triggered by DOH Officer IV
+  },
+  {
+    recallId: 'REC-L005',
+    donorId: 'D005',
+    recallDate: '2026-06-26',
+    smsStatus: 'Pending',
+    donorResponse: null,
+    processedBy: null // System-automated
+  }
+];
 
 // 8‑week historical + 4 predicted weeks with upper/lower confidence bounds
 const initialForecastData = [
@@ -295,7 +413,73 @@ export const useBloodStore = create(
       forecastData: initialForecastData,
       granularForecasts: [], // Seeded by generateGranularForecast on first call
       distributionLog: initialDistributionLog,
-      smsLogs: [],
+      smsLogs: [
+        {
+          smsId: 'SMS-001',
+          donorId: 'D001',
+          recallId: 'REC-L001',
+          name: 'Juan P. Dela Cruz',
+          phone: '+63 917 456 7890',
+          initials: 'JD',
+          color: '#C21C24',
+          message: '\uD83E\uDE78 Hello Juan P. Dela Cruz. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.',
+          sentAt: '2026-06-10T08:14:22',
+          status: 'Sent',
+          errorMessage: null
+        },
+        {
+          smsId: 'SMS-002',
+          donorId: 'D002',
+          recallId: 'REC-L002',
+          name: 'Maria A. Santos',
+          phone: '+63 918 234 5678',
+          initials: 'MS',
+          color: '#2563EB',
+          message: '\uD83E\uDE78 Hello Maria A. Santos. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.',
+          sentAt: '2026-06-15T09:30:10',
+          status: 'Sent',
+          errorMessage: null
+        },
+        {
+          smsId: 'SMS-003',
+          donorId: 'D003',
+          recallId: 'REC-L003',
+          name: 'Robert L. Tan',
+          phone: '+63 920 111 2222',
+          initials: 'RT',
+          color: '#7C3AED',
+          message: '\uD83E\uDE78 Hello Robert L. Tan. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.',
+          sentAt: '2026-06-20T11:05:44',
+          status: 'Failed',
+          errorMessage: 'Recipient number is not a valid mobile number or is currently out of network coverage.'
+        },
+        {
+          smsId: 'SMS-004',
+          donorId: 'D004',
+          recallId: 'REC-L004',
+          name: 'Sarah G. Cruz',
+          phone: '+63 921 555 6789',
+          initials: 'SC',
+          color: '#059669',
+          message: '\uD83E\uDE78 Hello Sarah G. Cruz. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.',
+          sentAt: '2026-06-25T14:22:38',
+          status: 'Sent',
+          errorMessage: null
+        },
+        {
+          smsId: 'SMS-005',
+          donorId: 'D005',
+          recallId: 'REC-L005',
+          name: 'Joseph M. Castro',
+          phone: '+63 922 888 9012',
+          initials: 'JC',
+          color: '#D97706',
+          message: '\uD83E\uDE78 Hello Joseph M. Castro. Your 90-day donation interval is complete! You are eligible to donate blood again. Visit bloodlinkdvo.ph to learn more.',
+          sentAt: '2026-06-26T07:58:01',
+          status: 'Pending',
+          errorMessage: null
+        }
+      ],
       currentUser: {
         id: 'BLD-482931',
         name: 'Maria C. Santos',
@@ -465,89 +649,169 @@ export const useBloodStore = create(
         set((state) => ({ forecastData: [...state.forecastData, ...newWeeks] }));
       },
 
-      // ─── Granular Forecast: Regression-Enhanced Moving Average ──────────
-      // Algorithm:
-      //   1. Collect last 8 weeks of actual issuances per hospital/blood type/component.
-      //   2. Compute 4-week moving average (MA4) to smooth noise.
-      //   3. Apply OLS linear regression to find trend slope.
-      //   4. Predict N weeks ahead: predicted = MA_last + slope * i.
-      //   5. Confidence interval: ±8% of predicted value.
+      // ─── Granular Forecast: Multiple Linear Regression (MLR) ─────────────
+      // Correct MLR approach:
+      //   1. Collect all hospital × blood type × component × week observations into one GLOBAL matrix
+      //   2. Solve a single set of OLS coefficients b = (X^T X)^-1 X^T Y
+      //      where X = [1, week, hospScale, compWeight] — these vary ACROSS groups
+      //   3. For each group, predict future weeks using the learned global coefficients + MA4 blending
+      //   NOTE: Per-group matrices with constant X2/X3 are SINGULAR → that's why the old approach crashed.
       generateGranularForecast: (weeksAhead = 4) => {
-        const { distributionLog, hospitals, inventory } = get();
+        const { hospitals, inventory } = get();
         const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
         const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
 
-        // Build synthetic 8-week historical data per hospital × blood type × component
-        // using distribution log and inventory as base references
-        const BASE_WEEK = new Date('2026-05-05'); // Week 1 start
-        const results = [];
-        let forecastIdSeq = 1;
+        const BASE_WEEK = new Date('2026-05-05');
 
+        // ── Matrix helper functions ─────────────────────────────────────────
+        const matTranspose = (M) => {
+          const rows = M.length, cols = M[0].length;
+          const R = Array.from({ length: cols }, () => Array(rows).fill(0));
+          for (let r = 0; r < rows; r++)
+            for (let c = 0; c < cols; c++)
+              R[c][r] = M[r][c];
+          return R;
+        };
+
+        const matMultiply = (A, B) => {
+          const rA = A.length, cA = A[0].length, cB = B[0].length;
+          const R = Array.from({ length: rA }, () => Array(cB).fill(0));
+          for (let r = 0; r < rA; r++)
+            for (let c = 0; c < cB; c++)
+              for (let k = 0; k < cA; k++)
+                R[r][c] += A[r][k] * B[k][c];
+          return R;
+        };
+
+        const matInvert = (M) => {
+          const n = M.length;
+          const A = M.map(row => [...row]);
+          const I = Array.from({ length: n }, (_, i) =>
+            Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))
+          );
+          for (let i = 0; i < n; i++) {
+            let maxEl = Math.abs(A[i][i]), maxRow = i;
+            for (let k = i + 1; k < n; k++)
+              if (Math.abs(A[k][i]) > maxEl) { maxEl = Math.abs(A[k][i]); maxRow = k; }
+            [A[i], A[maxRow]] = [A[maxRow], A[i]];
+            [I[i], I[maxRow]] = [I[maxRow], I[i]];
+            const d = A[i][i] || 1e-12;
+            for (let k = 0; k < n; k++) { A[i][k] /= d; I[i][k] /= d; }
+            for (let h = 0; h < n; h++) {
+              if (h !== i) {
+                const f = A[h][i];
+                for (let k = 0; k < n; k++) { A[h][k] -= f * A[i][k]; I[h][k] -= f * I[i][k]; }
+              }
+            }
+          }
+          return I;
+        };
+
+        // ── Step 1: Build GLOBAL observation dataset ────────────────────────
+        // Each row: [hospScale, compWeight, rarityFactor, weekIdx] → actual demand
+        const RARITY = { 'O+': 1.0, 'A+': 0.8, 'B+': 0.7, 'AB+': 0.3, 'O-': 0.6, 'A-': 0.4, 'B-': 0.2, 'AB-': 0.1 };
+        const COMP_W = { 'PRBC': 1.0, 'Platelet Concentrate': 0.6, 'FFP': 0.5, 'Cryoprecipitate': 0.3, 'Cryosupernate': 0.2 };
+        const HOSP_S = { 'Government': 1.5, 'Blood Bank': 1.2 };
+
+        // Collect all groups' historical data
+        const groups = [];
         hospitals.forEach(hosp => {
           BLOOD_TYPES.forEach(bt => {
-            // Only generate forecast for blood types with some inventory
             const inv = inventory.find(i => i.type === bt);
             if (!inv) return;
-
             COMPONENTS.forEach(comp => {
-              // Base demand varies realistically by component type and blood type rarity
-              const rarityFactor = { 'O+': 1.0, 'A+': 0.8, 'B+': 0.7, 'AB+': 0.3, 'O-': 0.6, 'A-': 0.4, 'B-': 0.2, 'AB-': 0.1 }[bt] || 0.5;
-              const compFactor = { 'PRBC': 1.0, 'Platelet Concentrate': 0.6, 'FFP': 0.5, 'Cryoprecipitate': 0.3, 'Cryosupernate': 0.2 }[comp] || 0.5;
-              const hospFactor = hosp.type === 'Government' ? 1.5 : hosp.type === 'Blood Bank' ? 1.2 : 1.0;
-              const baseDemand = Math.round(8 * rarityFactor * compFactor * hospFactor);
+              const rarityFactor = RARITY[bt] || 0.5;
+              const compFactor   = COMP_W[comp] || 0.5;
+              const hospFactor   = HOSP_S[hosp.type] || 1.0;
+              const baseDemand   = Math.round(8 * rarityFactor * compFactor * hospFactor);
+              if (baseDemand === 0) return;
 
-              if (baseDemand === 0) return; // Skip near-zero demand combinations
+              const hospScale  = HOSP_S[hosp.type] || 1.0;
+              const compWeight = COMP_W[comp] || 0.5;
 
-              // Build 8 weeks of synthetic actuals with small random noise
               const historicalWeeks = [];
               for (let w = 0; w < 8; w++) {
                 const weekDate = new Date(BASE_WEEK);
                 weekDate.setDate(weekDate.getDate() + w * 7);
                 const noise = Math.round((Math.random() - 0.4) * baseDemand * 0.3);
-                historicalWeeks.push({ week: w, date: weekDate.toISOString().slice(0, 10), actual: Math.max(0, baseDemand + noise) });
-              }
-
-              // Step 1: 4-week Moving Average on most recent actuals
-              const lastFour = historicalWeeks.slice(-4).map(w => w.actual);
-              const maLast = lastFour.reduce((a, b) => a + b, 0) / 4;
-
-              // Step 2: OLS Linear Regression (y = a + b*x)
-              const n = historicalWeeks.length;
-              const xs = historicalWeeks.map(w => w.week);
-              const ys = historicalWeeks.map(w => w.actual);
-              const sumX = xs.reduce((a, b) => a + b, 0);
-              const sumY = ys.reduce((a, b) => a + b, 0);
-              const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
-              const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-              const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) || 0;
-
-              // Step 3: Generate N weeks ahead
-              for (let i = 1; i <= weeksAhead; i++) {
-                const weekDate = new Date(BASE_WEEK);
-                weekDate.setDate(weekDate.getDate() + (8 + i - 1) * 7);
-                const predicted = Math.max(0, Math.round(maLast + slope * i));
-                const margin = Math.max(1, Math.round(predicted * 0.08));
-
-                results.push({
-                  forecastId: forecastIdSeq++,
-                  hospitalId: hosp.id,
-                  hospitalName: hosp.name,
-                  bloodTypeId: bt,
-                  componentId: comp,
-                  forecastWeek: weekDate.toISOString().slice(0, 10),
-                  forecastWeekLabel: `Wk ${8 + i}`,
-                  predictedDemand: predicted,
-                  upperBound: predicted + margin,
-                  lowerBound: Math.max(0, predicted - margin),
-                  generatedAt: new Date().toISOString(),
-                  historicalWeeks, // Carry history for chart use
-                  slope: parseFloat(slope.toFixed(3)),
-                  maLast: parseFloat(maLast.toFixed(1)),
-                  weeksAhead: i,
+                historicalWeeks.push({
+                  week: w,
+                  date: weekDate.toISOString().slice(0, 10),
+                  actual: Math.max(0, baseDemand + noise)
                 });
               }
+
+              groups.push({ hosp, bt, comp, hospScale, compWeight, historicalWeeks });
             });
           });
+        });
+
+        // ── Step 2: Build GLOBAL X and Y matrices (across ALL groups × weeks) ──
+        // X columns: [1 (intercept), weekIdx, hospScale, compWeight]
+        // This ensures X2 and X3 vary across rows → X^T X is non-singular
+        const globalX = [];
+        const globalY = [];
+        groups.forEach(({ hospScale, compWeight, historicalWeeks }) => {
+          historicalWeeks.forEach(({ week, actual }) => {
+            globalX.push([1, week, hospScale, compWeight]);
+            globalY.push([actual]);
+          });
+        });
+
+        // ── Step 3: Solve global MLR: beta = (X^T X)^-1 X^T Y ──────────────
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+        try {
+          const XT     = matTranspose(globalX);
+          const XTX    = matMultiply(XT, globalX);
+          const XTXinv = matInvert(XTX);
+          const XTY    = matMultiply(XT, globalY);
+          const beta   = matMultiply(XTXinv, XTY);
+          b0 = isFinite(beta[0][0]) ? beta[0][0] : 0;
+          b1 = isFinite(beta[1][0]) ? beta[1][0] : 0;
+          b2 = isFinite(beta[2][0]) ? beta[2][0] : 0;
+          b3 = isFinite(beta[3][0]) ? beta[3][0] : 0;
+        } catch (_) {
+          // Fallback: coefficients remain 0, predictions rely on MA4 only
+        }
+
+        // ── Step 4: Generate predictions per group ───────────────────────────
+        const results = [];
+        let forecastIdSeq = 1;
+
+        groups.forEach(({ hosp, bt, comp, hospScale, compWeight, historicalWeeks }) => {
+          // MA4 on last 4 weeks for smoothing
+          const maLast = historicalWeeks.slice(-4)
+            .reduce((sum, w) => sum + w.actual, 0) / 4;
+
+          for (let i = 1; i <= weeksAhead; i++) {
+            const weekDate = new Date(BASE_WEEK);
+            weekDate.setDate(weekDate.getDate() + (8 + i - 1) * 7);
+
+            // MLR prediction: y = b0 + b1*weekIdx + b2*hospScale + b3*compWeight
+            const weekIdx    = 8 + i - 1;
+            const mlrPred    = b0 + b1 * weekIdx + b2 * hospScale + b3 * compWeight;
+            // Blend MLR (70%) with MA4 (30%) for stability
+            const predicted  = Math.max(0, Math.round(0.7 * mlrPred + 0.3 * maLast));
+            const margin     = Math.max(1, Math.round(predicted * 0.08));
+
+            results.push({
+              forecastId:       forecastIdSeq++,
+              hospitalId:       hosp.id,
+              hospitalName:     hosp.name,
+              bloodTypeId:      bt,
+              componentId:      comp,
+              forecastWeek:     weekDate.toISOString().slice(0, 10),
+              forecastWeekLabel: `Wk ${8 + i}`,
+              predictedDemand:  predicted,
+              upperBound:       predicted + margin,
+              lowerBound:       Math.max(0, predicted - margin),
+              generatedAt:      new Date().toISOString(),
+              historicalWeeks,
+              mlrCoefficients:  { b0: +b0.toFixed(3), b1: +b1.toFixed(3), b2: +b2.toFixed(3), b3: +b3.toFixed(3) },
+              maLast:           +maLast.toFixed(1),
+              weeksAhead:       i,
+            });
+          }
         });
 
         set({ granularForecasts: results });
@@ -962,7 +1226,7 @@ export const useBloodStore = create(
 
       rejectRecommendation: (recId) => {
         set((state) => {
-          const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Rejected', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toLocaleString() } : r);
+          const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Rejected', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toISOString().slice(0, 19) } : r);
           
           const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
           const newAuditLog = {
@@ -983,7 +1247,80 @@ export const useBloodStore = create(
         });
       },
 
-      // ─── Inventory ──────────────────────────────────────────────────────
+      // ─── Generate Recommendations from Forecast (Table 15) ───────────────
+      // Reads granularForecasts Week 9 (nearest future week) for each
+      // hospital × blood type × component combination, takes the top-demand
+      // entries, and creates Pending recommendation records with real forecastId FK.
+      generateRecommendationsFromForecast: () => {
+        set((state) => {
+          const gf = state.granularForecasts;
+          if (!gf || gf.length === 0) return {};
+
+          const today = new Date().toISOString().slice(0, 10);
+
+          // Take the very first future week label present in forecasts
+          const weekLabels = [...new Set(gf.map(f => f.forecastWeekLabel))].sort();
+          const nextWeekLabel = weekLabels[0]; // e.g. "Wk 9"
+
+          // Filter to that week only
+          const nextWeekForecasts = gf.filter(f => f.forecastWeekLabel === nextWeekLabel);
+
+          // Sort by predicted demand descending, take top entries
+          const sorted = [...nextWeekForecasts].sort((a, b) => b.predictedDemand - a.predictedDemand);
+
+          // Deduplicate by hospital+bloodType+component (take highest predicted)
+          const seen = new Set();
+          const unique = sorted.filter(f => {
+            const key = `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+
+          // Take top 8 entries to avoid overwhelming the table
+          const topForecasts = unique.slice(0, 8);
+
+          // Build next REC ID sequence
+          const existing = state.recommendations;
+          const maxId = existing.reduce((max, r) => {
+            const num = parseInt(r.recommendationId.replace('REC-', ''), 10);
+            return isNaN(num) ? max : Math.max(max, num);
+          }, 0);
+
+          const newRecs = topForecasts.map((f, idx) => ({
+            recommendationId: `REC-${String(maxId + idx + 1).padStart(3, '0')}`,
+            forecastId: f.forecastId,           // Real FK → granularForecasts.forecastId
+            hospitalId: f.hospitalId,
+            hospitalName: f.hospitalName,
+            bloodTypeId: f.bloodTypeId,
+            componentId: f.componentId,
+            recommendedQuantity: f.predictedDemand,
+            recommendationDate: today,
+            status: 'Pending',
+            approvedBy: null,
+            actedAt: null
+          }));
+
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-002',
+            action: `Generated ${newRecs.length} distribution recommendations from Forecast ${nextWeekLabel}`,
+            module: 'Allocation',
+            recordId: nextWeekLabel,
+            oldValue: null,
+            newValue: `${newRecs.length} Pending`,
+            performedAt: new Date().toLocaleString()
+          };
+
+          return {
+            recommendations: [...newRecs, ...state.recommendations],
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
+      },
+
+
       updateInventoryUnits: (type, units) => {
         set((state) => {
           const newInventory = state.inventory.map((item) => {
@@ -1022,10 +1359,38 @@ export const useBloodStore = create(
 
       setPhaseDetails: (phase, confirmedCount) => set({ currentPhase: phase, totalConfirmed: confirmedCount }),
 
-      dispatchSMSLog: (name, phone, msg, color, initials) => {
-        const timeString = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const log = { name, phone, time: timeString, status: 'Delivered', msg, color, initials };
+      dispatchSMSLog: (name, phone, msg, color, initials, donorId = null, recallId = null) => {
+        const now = new Date();
+        const smsId = 'SMS-' + Math.floor(100 + Math.random() * 900);
+        const log = {
+          smsId,
+          donorId,
+          recallId,
+          name,
+          phone,
+          initials,
+          color,
+          message: msg,
+          sentAt: now.toISOString().slice(0, 19), // 'YYYY-MM-DDTHH:mm:ss'
+          status: 'Sent',
+          errorMessage: null
+        };
         set((state) => ({ smsLogs: [log, ...state.smsLogs] }));
+      },
+
+      dispatchRecallSMS: (donorId, processedBy = null) => {
+        set((state) => {
+          const recallId = 'REC-L' + Math.floor(100 + Math.random() * 900);
+          const newRecall = {
+            recallId,
+            donorId,
+            recallDate: new Date().toISOString().split('T')[0],
+            smsStatus: 'Sent',
+            donorResponse: null,
+            processedBy
+          };
+          return { donorRecalls: [newRecall, ...state.donorRecalls] };
+        });
       },
 
       resetMobilization: () => {
@@ -1034,9 +1399,8 @@ export const useBloodStore = create(
     }),
     { 
       name: 'bloodlink-dvo-store',
-      version: 4,
+      version: 9,
       migrate: () => {
-        // On version mismatch, return undefined so the store resets to initialState
         return undefined;
       }
     }

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useBloodStore } from '../store/useBloodStore';
 import {
   LogOut, Plus, Clock,
   CheckCircle, XCircle, AlertTriangle, FileText,
-  Droplets, X, Activity, Database, Shield, Trash2, ShoppingCart, Eye
+  Droplets, X, Activity, Database, Shield, Trash2, ShoppingCart, Eye,
+  TrendingUp, Search, ChevronDown
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -38,13 +40,39 @@ export default function IssuanceDashboard() {
     rejectRequest, 
     authSystemUser,
     bloodIssuance,
-    bloodIssuanceDetails
+    bloodIssuanceDetails,
+    granularForecasts,
+    generateGranularForecast
   } = useBloodStore();
+
+  // ── Forecast filter states ──
+  const [fcHospital,  setFcHospital]  = useState('ALL');
+  const [fcBloodType, setFcBloodType] = useState('ALL');
+  const [fcComponent, setFcComponent] = useState('ALL');
+  const [fcWeeks,     setFcWeeks]     = useState(4);
+
+  const BLOOD_TYPE_LIST = ['O+','O-','A+','A-','B+','B-','AB+','AB-'];
+  const COMP_LIST = ['PRBC','Platelet Concentrate','FFP','Cryoprecipitate','Cryosupernate'];
 
   const role           = authSystemUser?.role || 'Hospital User';
   const isHospitalUser  = role === 'Hospital User';
   const isIssuanceStaff = role === 'Issuance Personnel';
   const hospitalId      = authSystemUser?.hospitalId || 'HOSP-001';
+
+  // Auto-generate forecast on mount for Issuance Personnel
+  useEffect(() => {
+    if (role === 'Issuance Personnel' && (!granularForecasts || granularForecasts.length === 0)) {
+      generateGranularForecast(4);
+    }
+  }, []);
+  const filteredGF = (granularForecasts || []).filter(f => {
+    if (fcHospital  !== 'ALL' && f.hospitalId  !== fcHospital)  return false;
+    if (fcBloodType !== 'ALL' && f.bloodTypeId !== fcBloodType) return false;
+    if (fcComponent !== 'ALL' && f.componentId !== fcComponent) return false;
+    return true;
+  });
+
+  const hasGFData = filteredGF.length > 0;
 
   // Resolve the hospital name from the store
   const myHospital = hospitals?.find(h => h.id === hospitalId);
@@ -212,6 +240,11 @@ export default function IssuanceDashboard() {
                   <Activity className="nav-icon" />
                   <span>Blood Issuance Details</span>
                 </button>
+                <button onClick={() => { setActiveTab('forecast'); if (!granularForecasts || granularForecasts.length === 0) generateGranularForecast(fcWeeks); }}
+                  className={`w-full text-left nav-link ${activeTab === 'forecast' ? 'active' : ''}`}>
+                  <TrendingUp className="nav-icon" />
+                  <span>Demand Forecast</span>
+                </button>
               </>
             )}
           </nav>
@@ -232,10 +265,10 @@ export default function IssuanceDashboard() {
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
           <div>
             <h2 className="text-slate-900 font-bold text-sm leading-tight">
-              {isHospitalUser ? 'Blood Request Portal' : activeTab === 'inventory' ? 'Inventory Check' : activeTab === 'issuance_details' ? 'Blood Issuance Details' : 'Issuance Queue'}
+              {isHospitalUser ? 'Blood Request Portal' : activeTab === 'inventory' ? 'Inventory Check' : activeTab === 'issuance_details' ? 'Blood Issuance Details' : activeTab === 'forecast' ? 'Demand Forecasting' : 'Issuance Queue'}
             </h2>
             <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">
-              {isHospitalUser ? 'Logistics-only - RA 10173 compliant' : activeTab === 'inventory' ? 'Current blood component stock' : activeTab === 'issuance_details' ? 'Detailed records of issued units' : 'Review and fulfill hospital blood requests'}
+              {isHospitalUser ? 'Logistics-only - RA 10173 compliant' : activeTab === 'inventory' ? 'Current blood component stock' : activeTab === 'issuance_details' ? 'Detailed records of issued units' : activeTab === 'forecast' ? 'MLR-based blood demand predictions' : 'Review and fulfill hospital blood requests'}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -470,6 +503,384 @@ export default function IssuanceDashboard() {
               </div>
             </div>
           )}
+
+          {/* ── TAB: DEMAND FORECAST (Issuance Personnel only) ── */}
+          {isIssuanceStaff && activeTab === 'forecast' && (() => {
+            const gf = Array.isArray(granularForecasts) ? granularForecasts : [];
+            const isOverview = fcHospital === 'ALL' && fcBloodType === 'ALL' && fcComponent === 'ALL';
+
+            // ── OVERVIEW MODE: Aggregate all forecasts per week ──
+            const allWeekLabels = [...new Set(gf.map(f => f.forecastWeekLabel))].sort();
+            const overviewChartData = (() => {
+              const sampleHistorical = gf[0]?.historicalWeeks || [];
+              const histPart = sampleHistorical.map((w, idx) => {
+                const seen = {};
+                gf.forEach(f => {
+                  const key = `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`;
+                  if (!seen[key] && f.historicalWeeks?.[idx]) {
+                    seen[key] = f.historicalWeeks[idx].actual;
+                  }
+                });
+                const total = Object.values(seen).reduce((a, b) => a + b, 0);
+                return { label: `Wk ${idx + 1}`, actual: total, predicted: null, upper: null, lower: null };
+              });
+
+              const predPart = allWeekLabels.map(wkLabel => {
+                const rows = gf.filter(f => f.forecastWeekLabel === wkLabel);
+                const totalPred = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                const totalUpper = rows.reduce((s, f) => s + f.upperBound, 0);
+                const totalLower = rows.reduce((s, f) => s + f.lowerBound, 0);
+                return { label: wkLabel, actual: null, predicted: totalPred, upper: totalUpper, lower: totalLower };
+              });
+
+              return [...histPart, ...predPart];
+            })();
+
+            // ── FILTERED MODE: specific combo ──
+            const filtered = gf.filter(f =>
+              (fcHospital  === 'ALL' || f.hospitalId  === fcHospital)  &&
+              (fcBloodType === 'ALL' || f.bloodTypeId === fcBloodType) &&
+              (fcComponent === 'ALL' || f.componentId === fcComponent)
+            );
+
+            const filteredChartData = (() => {
+              const sampleHistorical = filtered[0]?.historicalWeeks || [];
+              const histPart = sampleHistorical.map((w, idx) => {
+                const seen = {};
+                filtered.forEach(f => {
+                  const key = `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`;
+                  if (!seen[key] && f.historicalWeeks?.[idx]) {
+                    seen[key] = f.historicalWeeks[idx].actual;
+                  }
+                });
+                const total = Object.values(seen).reduce((a, b) => a + b, 0);
+                return { label: `Wk ${idx + 1}`, actual: total, predicted: null, upper: null, lower: null };
+              });
+              const predPart = allWeekLabels.map(wkLabel => {
+                const rows = filtered.filter(f => f.forecastWeekLabel === wkLabel);
+                if (!rows.length) return null;
+                return {
+                  label: wkLabel,
+                  actual: null,
+                  predicted: rows.reduce((s, f) => s + f.predictedDemand, 0),
+                  upper:     rows.reduce((s, f) => s + f.upperBound, 0),
+                  lower:     rows.reduce((s, f) => s + f.lowerBound, 0),
+                };
+              }).filter(Boolean);
+              return [...histPart, ...predPart];
+            })();
+
+            const activeChartData = isOverview ? overviewChartData : filteredChartData;
+
+            // KPI calculations
+            const nextWkPredOverview = overviewChartData.find(d => d.predicted !== null);
+            const nextWkFiltered     = filteredChartData.find(d => d.predicted !== null);
+            const totalForecastedUnitsNextWk = isOverview
+              ? (nextWkPredOverview?.predicted ?? 0)
+              : (nextWkFiltered?.predicted ?? 0);
+            const totalHistActual = (() => {
+              const histRows = activeChartData.filter(d => d.actual !== null);
+              if (!histRows.length) return 0;
+              return Math.round(histRows.reduce((s, d) => s + d.actual, 0) / histRows.length);
+            })();
+            const totalCombinations = isOverview
+              ? new Set(gf.map(f => `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`)).size
+              : new Set(filtered.map(f => `${f.hospitalId}|${f.bloodTypeId}|${f.componentId}`)).size;
+            const highestDemandCombo = (() => {
+              const rows = (isOverview ? gf : filtered).filter(f => f.weeksAhead === 1);
+              if (!rows.length) return null;
+              return rows.reduce((best, f) => f.predictedDemand > (best?.predictedDemand ?? 0) ? f : best, null);
+            })();
+
+            return (
+              <div className="space-y-6">
+                {/* Controls */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-[#C21C24]" /> MLR Demand Forecast
+                      </h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {isOverview
+                          ? <span className="text-emerald-600 font-bold">📊 Overview Mode — Total demand across all hospitals, blood types, and components</span>
+                          : <span className="text-[#C21C24] font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
+                        }
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isOverview && (
+                        <button onClick={() => { setFcHospital('ALL'); setFcBloodType('ALL'); setFcComponent('ALL'); }}
+                          className="text-xs font-bold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition cursor-pointer">
+                          ↩ Reset to Overview
+                        </button>
+                      )}
+                      <button
+                        onClick={() => generateGranularForecast(fcWeeks)}
+                        className="bg-[#C21C24] hover:bg-[#A8181F] text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm cursor-pointer"
+                      >
+                        <Activity className="w-3.5 h-3.5" /> Run Forecast
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Hospital</label>
+                      <select value={fcHospital} onChange={e => setFcHospital(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Hospitals (Overview)</option>
+                        {(hospitals || []).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Blood Type</label>
+                      <select value={fcBloodType} onChange={e => setFcBloodType(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Blood Types</option>
+                        {BLOOD_TYPE_LIST.map(bt => <option key={bt}>{bt}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Component</label>
+                      <select value={fcComponent} onChange={e => setFcComponent(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        <option value="ALL">All Components</option>
+                        {COMP_LIST.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Weeks Ahead</label>
+                      <select value={fcWeeks} onChange={e => setFcWeeks(Number(e.target.value))}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        {[2,4,6,8].map(w => <option key={w} value={w}>{w} weeks</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Loading state */}
+                {!hasGFData && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center">
+                    <div className="loading py-4 flex justify-center mb-3">
+                      <svg width="64px" height="48px" viewBox="0 0 48 48">
+                        <polyline points="0.15, 24 16.15, 24 20.15, 12 24.15, 36 28.15, 18 32.15, 30 36.15, 24 47.85, 24" id="back"></polyline>
+                        <polyline points="0.15, 24 16.15, 24 20.15, 12 24.15, 36 28.15, 18 32.15, 30 36.15, 24 47.85, 24" id="front"></polyline>
+                      </svg>
+                    </div>
+                    <p className="font-bold text-slate-700 text-sm">Processing OLS Matrix Solver…</p>
+                    <p className="text-xs text-slate-400 mt-1">Click <strong>Run Forecast</strong> to generate MLR predictions.</p>
+                  </div>
+                )}
+
+                {/* KPI cards & Chart */}
+                {hasGFData && (
+                  <>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                          {isOverview ? 'Total Next-Week Demand' : 'Next-Week (Filtered)'}
+                        </p>
+                        <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{totalForecastedUnitsNextWk.toFixed(0)}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {isOverview ? 'units across all hospitals' : `units · ${fcBloodType} ${fcComponent}`}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Avg Historical Demand</p>
+                        <p className="text-2xl font-extrabold text-emerald-600 font-mono">{totalHistActual}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {isOverview ? 'total units/week (8-wk avg)' : 'units/week (filtered avg)'}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                          {isOverview ? 'Active Combinations' : 'Filtered Combinations'}
+                        </p>
+                        <p className="text-2xl font-extrabold text-blue-600 font-mono">{totalCombinations}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">hospital × type × component</p>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Highest Demand (Next Wk)</p>
+                        <p className="text-2xl font-extrabold text-amber-600 font-mono">{highestDemandCombo?.predictedDemand.toFixed(0) ?? '—'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 leading-tight">
+                          {highestDemandCombo
+                            ? `${highestDemandCombo.bloodTypeId} ${highestDemandCombo.componentId}`
+                            : '—'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Chart Container */}
+                    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                            {isOverview
+                              ? '📊 Overall System Demand Forecast (All Hospitals · All Blood Types · All Components)'
+                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
+                            }
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Wk 1–8 = historical actual issuances (aggregated) | Wk 9+ = REMA predictions with ±8% confidence band
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-semibold flex-shrink-0 ml-4 font-sans">
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-300 inline-block rounded"></span>Confidence</span>
+                        </div>
+                      </div>
+                      <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={activeChartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tick={{ fontFamily: 'monospace' }} />
+                            <YAxis stroke="#94a3b8" fontSize={10} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              formatter={(val, name) => [val ? `${val} units` : '—', name]}
+                            />
+                            <Line type="monotone" dataKey="upper"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="lower"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="actual"    stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
+                            <Line type="monotone" dataKey="predicted" stroke="#C21C24" strokeWidth={3} name="REMA Prediction"    dot={{ r: 4, fill: '#C21C24' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Per Blood Type Breakdown (Overview only) */}
+                    {isOverview && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Blood Type</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Summed across all hospitals & components — click a blood type to filter</p>
+                          </div>
+                        </div>
+                        <div className="p-5 grid grid-cols-4 md:grid-cols-8 gap-3">
+                          {BLOOD_TYPE_LIST.map(bt => {
+                            const rows = gf.filter(f => f.bloodTypeId === bt && f.weeksAhead === 1);
+                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                            return (
+                              <button key={bt} onClick={() => setFcBloodType(bt)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-[#C21C24] hover:bg-rose-50 transition cursor-pointer group">
+                                <span className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-black text-[11px] flex items-center justify-center group-hover:bg-[#C21C24] group-hover:text-white transition font-mono">{bt}</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{total.toFixed(0)}</span>
+                                <span className="text-[9px] text-slate-400 font-semibold">{pct}% of total</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Per Hospital Breakdown (Overview only) */}
+                    {isOverview && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100">
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {(hospitals || []).map(hosp => {
+                            const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                            const barW = allTotal ? (total / allTotal) * 100 : 0;
+                            return (
+                              <button key={hosp.id} onClick={() => setFcHospital(hosp.id)}
+                                className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
+                                <div className="w-36 flex-shrink-0">
+                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
+                                  </div>
+                                </div>
+                                <div className="w-20 text-right flex-shrink-0">
+                                  <span className="font-extrabold text-slate-900 font-mono text-sm">{total.toFixed(0)}</span>
+                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Detailed Table */}
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Granular Forecast Results</h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {isOverview ? 'Showing top 20 records by predicted demand' : `${filtered.length} matching predictions`}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <tr>
+                              <th className="px-5 py-3 text-left">Forecast ID</th>
+                              <th className="px-5 py-3 text-left">Hospital</th>
+                              <th className="px-5 py-3 text-center">Blood Type</th>
+                              <th className="px-5 py-3 text-left">Component</th>
+                              <th className="px-5 py-3 text-center">Week</th>
+                              <th className="px-5 py-3 text-right">Predicted Demand</th>
+                              <th className="px-5 py-3 text-center">Confidence</th>
+                              <th className="px-5 py-3 text-center">Trend</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {(isOverview
+                              ? [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand).slice(0, 20)
+                              : filtered
+                            ).map(f => (
+                              <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-5 py-2.5 font-mono text-[10px] text-slate-400">{f.forecastId}</td>
+                                <td className="px-5 py-2.5 font-bold text-slate-800 text-[11px]">
+                                  {(hospitals || []).find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim() || f.hospitalName}
+                                </td>
+                                <td className="px-5 py-2.5 text-center">
+                                  <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[9px] font-mono">{f.bloodTypeId}</span>
+                                </td>
+                                <td className="px-5 py-2.5 text-slate-600 text-[11px]">{f.componentId}</td>
+                                <td className="px-5 py-2.5 text-center font-mono text-[10px] text-slate-500">{f.forecastWeekLabel}</td>
+                                <td className="px-5 py-2.5 text-right font-mono font-bold text-slate-900">
+                                  {f.predictedDemand.toFixed(1)}
+                                  <span className="text-[9px] text-slate-400 ml-1">bags</span>
+                                </td>
+                                <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">
+                                  {f.lowerBound.toFixed(0)}–{f.upperBound.toFixed(0)}
+                                </td>
+                                <td className="px-5 py-2.5 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                    f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                    f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                    'bg-slate-50 border-slate-200 text-slate-500'
+                                  }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
         </main>
       </div>

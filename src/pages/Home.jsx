@@ -183,12 +183,15 @@ const ParallaxShowcaseSection = React.forwardRef(({
           if (rect.top < windowHeight && rect.bottom > 0) {
             const percentage = currentDist / totalDist; // 0 to 1 range
             
-            // Background moves horizontally: from 0% to -20%
-            const bgShift = -20 * percentage;
+            // Alternating horizontal shift: 
+            // Left alignment shifts to the left (-20 to 0)
+            // Right alignment shifts to the right (0 to -20 or similar reversed transition)
+            const factor = textAlignment === 'right' ? 1 : -1;
+            const bgShift = factor * 20 * percentage + (textAlignment === 'right' ? -20 : 0);
+            
             setBgTranslateX(bgShift);
 
-            // Text moves vertically: from +60px to -60px relative to its standard position
-            // Creating a beautiful multi-directional depth effect (background horizontal, foreground vertical)
+            // Text moves vertically: from +80px to -80px
             const textShift = 80 * (0.5 - percentage);
             setTextTranslateY(textShift);
           }
@@ -349,9 +352,22 @@ export default function Home() {
     }
   };
 
+  const trackRef = useRef(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', onScroll);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 10);
+      if (trackRef.current) {
+        const rect = trackRef.current.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const totalHeight = rect.height - windowHeight;
+        const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
+        setScrollProgress(progress);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
@@ -364,12 +380,10 @@ export default function Home() {
   const [statRef, statVisible] = useReveal(0.2);
 
   const services = [
-    { icon: <Zap className="w-6 h-6 text-amber-500" />,       bg: 'bg-amber-50',   title: 'Automated Matching',       desc: 'Aho-Corasick algorithm pairs donors to blood types in under 2 seconds.' },
-    { icon: <MapPin className="w-6 h-6 text-emerald-600" />,   bg: 'bg-emerald-50', title: 'Geographic Prioritization', desc: 'Proximity-based donor ranking minimizes transport time to facility.' },
-    { icon: <Bell className="w-6 h-6 text-[#C21C24]" />,       bg: 'bg-rose-50',    title: 'Instant SMS Dispatch',      desc: 'Semaphore PH gateway sends targeted alerts to eligible donor tiers.' },
-    { icon: <Database className="w-6 h-6 text-blue-600" />,    bg: 'bg-blue-50',    title: 'Inventory Management',     desc: 'Real-time blood bag level monitoring with critical threshold alerts.' },
-    { icon: <Shield className="w-6 h-6 text-purple-600" />,    bg: 'bg-purple-50',  title: 'Re-Eligibility Scanning',  desc: 'Auto-detects donors who completed their 90-day safe rest interval.' },
-    { icon: <Users className="w-6 h-6 text-indigo-600" />,     bg: 'bg-indigo-50',  title: 'Turnout Tracking',         desc: 'Live arrival logging of confirmed donors at the blood center.' },
+    { icon: <Bell className="w-6 h-6 text-[#C21C24]" />,       bg: 'bg-rose-50',    title: 'SMS Gateway Ledger',        desc: 'Semaphore PH gateway transaction log tracking delivery failures.' },
+    { icon: <Activity className="w-6 h-6 text-blue-600" />,    bg: 'bg-blue-50',    title: 'MLR Demand Forecast',      desc: 'Predicts future blood bag demand using Multiple Linear Regression OLS.' },
+    { icon: <Database className="w-6 h-6 text-purple-600" />,  bg: 'bg-purple-50',  title: 'Equity Allocation',        desc: 'Computes proportional blood distribution weights for hospitals.' },
+    { icon: <Shield className="w-6 h-6 text-indigo-600" />,    bg: 'bg-indigo-50',  title: 'Donor Recall Engine',       desc: 'Auto-flags eligible donors after their 90-day rest interval.' },
     { icon: <FileText className="w-6 h-6 text-teal-600" />,    bg: 'bg-teal-50',    title: 'Blood Requests',           desc: 'Hospital pre-submission system with physician signature verification.' },
     { icon: <Search className="w-6 h-6 text-slate-600" />,     bg: 'bg-slate-100',  title: 'Donor Registry',           desc: 'Searchable Davao City donor database with full profile management.' },
   ];
@@ -629,24 +643,24 @@ export default function Home() {
       {/* ── HERO CAROUSEL (PRC style, full-width) ── */}
       <HeroCarousel />
 
-      {/* ── OUR SERVICES (PRC style 8-card grid) ── */}
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div ref={servRef} className={`text-center mb-12 transition-all duration-700 ${servVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="inline-block w-10 h-1 bg-[#C21C24] rounded mb-4" />
-            <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">System Capabilities</h2>
-            <p className="text-slate-500 text-sm mt-2 max-w-lg mx-auto">Eight integrated modules powering Davao City's blood donor mobilization chain.</p>
+      {/* ── STATS BANNER (Moved from bottom) ── */}
+      <section className="bg-[#C21C24] py-14 px-6 border-y border-red-700/30">
+        <div ref={statRef}
+          className={`max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-white transition-all duration-700 ${statVisible ? 'opacity-100 scale-100' : 'opacity-100 scale-100'}`}>
+          <div className="py-4 md:py-0">
+            <div className="text-3xl md:text-4xl font-extrabold">45 min</div>
+            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Avg. Mobilization Time</div>
+            <div className="text-rose-300 text-[10px] mt-0.5">vs. 4–8 hours manually</div>
           </div>
-          <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-700 delay-100 ${servVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            {services.map((s, i) => (
-              <div key={i} className="bg-white border border-slate-100 rounded-xl p-5 hover:shadow-md hover:border-slate-200 transition-all duration-300 cursor-default group">
-                <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  {s.icon}
-                </div>
-                <h4 className="font-bold text-slate-900 text-sm mb-1.5">{s.title}</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
+          <div className="border-t md:border-t-0 md:border-l border-white/20 py-4 md:py-0">
+            <div className="text-3xl md:text-4xl font-extrabold">98%</div>
+            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Matching Accuracy</div>
+            <div className="text-rose-300 text-[10px] mt-0.5">Verified donor matching</div>
+          </div>
+          <div className="border-t md:border-t-0 md:border-l border-white/20 py-4 md:py-0">
+            <div className="text-3xl md:text-4xl font-extrabold">3</div>
+            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Partner Facilities</div>
+            <div className="text-rose-300 text-[10px] mt-0.5 font-mono">SPMC · PRC · SNBC</div>
           </div>
         </div>
       </section>
@@ -725,28 +739,6 @@ export default function Home() {
         textAlignment="left"
         infoBoxText="Role of PRC in BloodLink DVO: Bridge between voluntary walk-in registries and direct hospital transfers, managing secondary reserves."
       />
-
-      {/* ── STATS BANNER ── */}
-      <section className="bg-[#C21C24] py-14 px-6">
-        <div ref={statRef}
-          className={`max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center text-white transition-all duration-700 ${statVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-          <div>
-            <div className="text-3xl md:text-4xl font-extrabold">45 min</div>
-            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Avg. Mobilization Time</div>
-            <div className="text-rose-300 text-[10px] mt-0.5">vs. 4–8 hours manually</div>
-          </div>
-          <div className="border-l border-white/20">
-            <div className="text-3xl md:text-4xl font-extrabold">98%</div>
-            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Matching Accuracy</div>
-            <div className="text-rose-300 text-[10px] mt-0.5">Verified donor matching</div>
-          </div>
-          <div className="border-l border-white/20">
-            <div className="text-3xl md:text-4xl font-extrabold">3</div>
-            <div className="text-rose-200 text-xs mt-1 font-semibold uppercase tracking-wider">Partner Facilities</div>
-            <div className="text-rose-300 text-[10px] mt-0.5">SPMC · PRC · SNBC</div>
-          </div>
-        </div>
-      </section>
 
       {/* ── DARK FOOTER (PRC style multi-column) ── */}
       <footer className="bg-[#1A1A1A] text-white">
