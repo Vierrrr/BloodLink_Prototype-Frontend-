@@ -199,7 +199,7 @@ export default function IssuanceDashboard() {
               <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
               <div>
                 <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-[#C21C24] text-[10px] font-bold">{isHospitalUser ? 'Hospital Portal' : 'Issuance Portal'}</p>
+                <p className="text-slate-500 text-[10px] font-bold">{isHospitalUser ? 'Hospital Portal' : 'Issuance Portal'}</p>
               </div>
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function IssuanceDashboard() {
           <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
             <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
             <div className="flex items-center gap-1.5">
-              <Shield className="w-3 h-3 text-[#C21C24]" />
+              <Shield className="w-3 h-3 text-indigo-600" />
               <p className="text-slate-800 font-bold text-xs">{role}</p>
             </div>
             {isHospitalUser && (
@@ -274,7 +274,7 @@ export default function IssuanceDashboard() {
           <div className="flex items-center gap-3">
             {isHospitalUser && (
               <button onClick={openNewForm}
-                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
+                className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
                 <Plus className="w-3.5 h-3.5" /> New Blood Request
               </button>
             )}
@@ -282,7 +282,7 @@ export default function IssuanceDashboard() {
               <p className="text-xs font-bold text-slate-900">{authSystemUser?.name || 'Staff'}</p>
               <p className="text-[10px] text-slate-400">{role}</p>
             </div>
-            <span className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-bold flex items-center justify-center text-xs">
+            <span className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
               {isHospitalUser ? 'HU' : 'IP'}
             </span>
           </div>

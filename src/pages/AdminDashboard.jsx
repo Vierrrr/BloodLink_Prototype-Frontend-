@@ -3,24 +3,24 @@ import { useBloodStore } from '../store/useBloodStore';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from 'recharts';
-import { 
-  Heart, 
-  Database, 
-  Activity, 
-  RefreshCw, 
-  ClipboardList, 
-  Map, 
-  Users, 
-  MessageSquare, 
-  AlertTriangle, 
-  CheckCircle, 
-  Search, 
-  Play, 
-  Send, 
-  Plus, 
-  ShieldAlert, 
-  CheckSquare, 
-  XCircle, 
+import {
+  Heart,
+  Database,
+  Activity,
+  RefreshCw,
+  ClipboardList,
+  Map,
+  Users,
+  MessageSquare,
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  Play,
+  Send,
+  Plus,
+  ShieldAlert,
+  CheckSquare,
+  XCircle,
   Clock,
   ArrowRight,
   Info,
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
   const addDonationEvent = useBloodStore((state) => state.addDonationEvent);
 
   // Role Detection
-  const adminRole   = authSystemUser?.role || 'Administrator';
+  const adminRole = authSystemUser?.role || 'Administrator';
   const isSuperAdmin = adminRole === 'Super Admin';
   const isAdministrator = adminRole === 'Administrator';
 
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
   const criteriaChecked = useBloodStore((state) => state.criteriaChecked);
   const totalConfirmed = useBloodStore((state) => state.totalConfirmed);
   const currentPhase = useBloodStore((state) => state.currentPhase);
-  
+
   const triggerMobilization = useBloodStore((state) => state.triggerMobilization);
   const setMobilizeFlowStep = useBloodStore((state) => state.setMobilizeFlowStep);
   const setScanProgress = useBloodStore((state) => state.setScanProgress);
@@ -125,11 +125,18 @@ export default function AdminDashboard() {
   const [reEligibilityComplete, setReEligibilityComplete] = useState(false);
   const [reEligibilityCount, setReEligibilityCount] = useState(0);
 
-  // Granular Forecast filters
-  const [fcHospital,   setFcHospital]   = useState('ALL');
-  const [fcBloodType,  setFcBloodType]  = useState('ALL');
-  const [fcComponent,  setFcComponent]  = useState('ALL');
-  const [fcWeeks,      setFcWeeks]      = useState(4);
+  // Granular Forecast filters (chart + KPI cards)
+  const [fcHospital, setFcHospital] = useState('ALL');
+  const [fcBloodType, setFcBloodType] = useState('ALL');
+  const [fcComponent, setFcComponent] = useState('ALL');
+  const [fcWeeks, setFcWeeks] = useState(4);
+
+  // Forecast Records table — independent filters
+  const [recHospital, setRecHospital] = useState('ALL');
+  const [recBloodType, setRecBloodType] = useState('ALL');
+  const [recComponent, setRecComponent] = useState('ALL');
+  const [recWeek, setRecWeek] = useState('ALL');
+  const [recSearch, setRecSearch] = useState('');
 
   // Distribution History detail modal
   const [selectedDistLog, setSelectedDistLog] = useState(null);
@@ -177,7 +184,7 @@ export default function AdminDashboard() {
     recall: 'Donor Recall',
     reports: 'Reports Module',
     audit_logs: 'Audit Logs (Table 18)',
-    hospital_history: 'Distribution History',
+    hospital_history: 'Distribution Summary',
     dist_record_detail: 'Distribution Record Detail'
   };
 
@@ -193,7 +200,7 @@ export default function AdminDashboard() {
     recall: 'Automates donor recall after the required eligibility period',
     reports: 'Generates operational reports',
     audit_logs: 'System transaction logs for RA 10173 accountability',
-    hospital_history: 'Searchable log of all blood distributions per hospital',
+    hospital_history: 'Summary overview of all blood distributions per hospital',
     dist_record_detail: 'Full breakdown of a single distribution transaction'
   };
 
@@ -212,7 +219,7 @@ export default function AdminDashboard() {
   ];
 
   // Matched Donors for table display (Maria Santos ranked 1st due to nearest location 1.2km)
-  const matchedDonors = donors.filter(d => d.bloodType === 'O-').sort((a,b) => parseFloat(a.distance) - parseFloat(b.distance));
+  const matchedDonors = donors.filter(d => d.bloodType === 'O-').sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
 
   // Run database scanning simulation (Aho-Corasick matching)
   useEffect(() => {
@@ -227,7 +234,7 @@ export default function AdminDashboard() {
         if (currentScanned >= 1247) {
           currentScanned = 1247;
           clearInterval(scanInterval);
-          
+
           setTimeout(() => {
             setScanProgress(100, 1247, currentMatched, 1);
             setTimeout(() => {
@@ -236,9 +243,9 @@ export default function AdminDashboard() {
                 setScanProgress(100, 1247, currentMatched, 3);
                 setTimeout(() => {
                   setMobilizeFlowStep(2); // Proceed to SMS gateway
-                  
+
                   matchedDonors.forEach((d) => {
-                    const initials = d.name.split(' ').map(n=>n[0]).join('');
+                    const initials = d.name.split(' ').map(n => n[0]).join('');
                     const color = d.name.includes('Santos') ? '#3B82F6' : '#10B981';
                     const msg = `🩸 URGENT O- BLOOD NEEDED at SPMC Blood Production Services. Distance: ${d.distance}. You last donated 4 months ago and are eligible. Can you donate today? Reply YES to confirm.`;
                     dispatchSMSLog(d.name, d.phone, msg, color, initials);
@@ -310,7 +317,7 @@ export default function AdminDashboard() {
 
       L.marker([7.0822, 125.6210], { icon: donorIcon }).bindPopup('<b>Maria C. Santos</b><br>Confirmed (1.2 km)').addTo(map);
 
-      for(let i=0; i<8; i++) {
+      for (let i = 0; i < 8; i++) {
         const lat = 7.0731 + (Math.random() - 0.5) * 0.02;
         const lng = 125.6128 + (Math.random() - 0.5) * 0.02;
         L.marker([lat, lng], { icon: donorIcon }).bindPopup('Donor confirmed').addTo(map);
@@ -324,10 +331,10 @@ export default function AdminDashboard() {
           fillOpacity: 0.04,
           radius: 10000
         }).addTo(map);
-        
+
         map.setView([7.0731, 125.6128], 11);
 
-        for(let i=0; i<8; i++) {
+        for (let i = 0; i < 8; i++) {
           const lat = 7.0731 + (Math.random() - 0.5) * 0.08;
           const lng = 125.6128 + (Math.random() - 0.5) * 0.08;
           L.marker([lat, lng], { icon: donorIcon }).bindPopup('Donor confirmed').addTo(map);
@@ -336,7 +343,7 @@ export default function AdminDashboard() {
 
       const t2 = setTimeout(() => {
         setPhaseDetails(3, arrivedAtFacility ? 26 : 25);
-        
+
         const compIcon = L.divIcon({
           className: 'mob-comp-icon',
           html: `<div style="background-color: #8B5CF6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.3);"></div>`,
@@ -344,7 +351,7 @@ export default function AdminDashboard() {
           iconAnchor: [6, 6]
         });
 
-        for(let i=0; i<5; i++) {
+        for (let i = 0; i < 5; i++) {
           const lat = 7.0731 + (Math.random() - 0.5) * 0.09;
           const lng = 125.6128 + (Math.random() - 0.5) * 0.09;
           L.marker([lat, lng], { icon: compIcon }).bindPopup('Compatible donor confirmed').addTo(map);
@@ -399,16 +406,16 @@ export default function AdminDashboard() {
       });
 
       const donorPoints = [
-        [7.0822, 125.6210], 
+        [7.0822, 125.6210],
         [7.0850, 125.6190],
         [7.0910, 125.6310],
-        [7.0510, 125.5920], 
+        [7.0510, 125.5920],
         [7.0480, 125.5960],
         [7.0390, 125.5890],
-        [7.0210, 125.5610], 
-        [7.1110, 125.6450], 
+        [7.0210, 125.5610],
+        [7.1110, 125.6450],
         [7.1250, 125.6510],
-        [7.0620, 125.5780], 
+        [7.0620, 125.5780],
         [7.0680, 125.5810]
       ];
 
@@ -431,11 +438,11 @@ export default function AdminDashboard() {
   const runReEligibilityScan = () => {
     setReEligibilityScanning(true);
     setReEligibilityComplete(false);
-    
+
     setTimeout(() => {
       setReEligibilityScanning(false);
       setReEligibilityComplete(true);
-      setReEligibilityCount(18); 
+      setReEligibilityCount(18);
     }, 2500);
   };
 
@@ -459,7 +466,7 @@ export default function AdminDashboard() {
       dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
       // Also log to the general SMS gateway log
       const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
-      dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n=>n[0]).join(''));
+      dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
     });
 
     alert(`Successfully dispatched recall alerts to ${eligibleDonors.length} eligible donors via Semaphore Gateway!`);
@@ -496,7 +503,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      
+
       {/* SIDEBAR NAVIGATION (CLEAN SAAS DIVIDER STYLE) */}
       <aside className="sidebar flex flex-col justify-between border-r border-slate-200 bg-white">
         <div>
@@ -506,11 +513,11 @@ export default function AdminDashboard() {
               <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
               <div>
                 <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-[#C21C24] text-[10px] font-bold">Center Portal</p>
+                <p className="text-slate-500 text-[10px] font-bold">Center Portal</p>
               </div>
             </div>
           </div>
-          
+
           {/* User Identity Panel */}
           <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
             <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Facility Desk</p>
@@ -521,7 +528,7 @@ export default function AdminDashboard() {
           {/* Sidebar Nav Links */}
           <nav className="flex-1 py-2 overflow-y-auto">
             <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">General</p>
-            
+
             <button onClick={() => setTab('dashboard')} className={`w-full text-left nav-link ${tab === 'dashboard' ? 'active' : ''}`}>
               <Database className="nav-icon" />
               <span>Dashboard</span>
@@ -536,7 +543,7 @@ export default function AdminDashboard() {
               <Users className="nav-icon" />
               <span>Donor Management</span>
             </button>
-            
+
             <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Inventory & Issuance</p>
 
             <button onClick={() => setTab('inventory')} className={`w-full text-left nav-link ${tab === 'inventory' ? 'active' : ''}`}>
@@ -573,12 +580,12 @@ export default function AdminDashboard() {
 
             <button onClick={() => setTab('distribution')} className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}>
               <Map className="nav-icon" />
-              <span>Distribution Recs</span>
+              <span>Distribution Recommendation:</span>
             </button>
 
             <button onClick={() => setTab('hospital_history')} className={`w-full text-left nav-link ${tab === 'hospital_history' ? 'active' : ''}`}>
               <ClipboardList className="nav-icon" />
-              <span>Distribution History</span>
+              <span>Distribution Summary</span>
             </button>
 
             <button onClick={() => setTab('recall')} className={`w-full text-left nav-link ${tab === 'recall' ? 'active' : ''}`}>
@@ -620,7 +627,7 @@ export default function AdminDashboard() {
 
       {/* MAIN CONTENT WORKSPACE */}
       <div className="content-area bg-slate-50/50">
-        
+
         {/* Top Header Bar */}
         <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-20">
           <div>
@@ -629,8 +636,8 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             {criticalCount > 0 && (
-              <button 
-                onClick={() => setTab('mobilize')} 
+              <button
+                onClick={() => setTab('mobilize')}
                 className="flex items-center gap-1.5 bg-rose-50 border border-rose-100 px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#C21C24] hover:bg-rose-100/50 transition"
               >
                 <AlertTriangle className="w-4 h-4" />
@@ -641,7 +648,7 @@ export default function AdminDashboard() {
             <Link
               to="/"
               title="Logout"
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-[#C21C24] hover:bg-rose-50 transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </Link>
@@ -650,11 +657,11 @@ export default function AdminDashboard() {
 
         {/* PAGE BODY */}
         <div className="p-8 flex-1">
-          
+
           {/* TAB: DASHBOARD OVERVIEW */}
           {tab === 'dashboard' && (
             <div className="fade-in space-y-6">
-              
+
               {/* Quick stats grids */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
@@ -681,7 +688,7 @@ export default function AdminDashboard() {
 
               {/* Progress stock grids */}
               <div className="grid lg:grid-cols-3 gap-6">
-                
+
                 {/* Left Progress Stock Bars */}
                 <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
                   <div>
@@ -691,18 +698,16 @@ export default function AdminDashboard() {
                         <div key={blood.type} className="flex items-center gap-4 text-xs font-semibold">
                           <span className="w-10 font-bold text-slate-900">{blood.type}</span>
                           <div className="flex-grow bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                            <div 
-                              className={`h-2.5 rounded-full transition-all ${
-                                blood.status === 'critical' ? 'bg-[#C21C24]' : blood.status === 'low' ? 'bg-amber-400' : 'bg-emerald-500'
-                              }`}
+                            <div
+                              className={`h-2.5 rounded-full transition-all ${blood.status === 'critical' ? 'bg-[#C21C24]' : blood.status === 'low' ? 'bg-amber-400' : 'bg-emerald-500'
+                                }`}
                               style={{ width: `${Math.min((blood.units / (blood.threshold * 2.5)) * 100, 100)}%` }}
                             ></div>
                           </div>
                           <span className={`w-16 text-right font-bold text-slate-800`}>{blood.units} units</span>
-                          <span className={`w-20 text-[10px] font-bold px-2 py-0.5 rounded text-center border ${
-                            blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24] pulse-red' : 
-                            blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                          }`}>
+                          <span className={`w-20 text-[10px] font-bold px-2 py-0.5 rounded text-center border ${blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24] pulse-red' :
+                              blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                            }`}>
                             {blood.status === 'critical' ? 'Critical' : blood.status === 'low' ? 'Low' : 'Stable'}
                           </span>
                         </div>
@@ -753,34 +758,31 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
                   {inventory.map((blood) => (
-                    <tr 
-                      key={blood.type} 
+                    <tr
+                      key={blood.type}
                       onClick={() => { setSelectedInventoryType(blood.type); setTab('blood_records'); }}
                       className={`hover:bg-slate-50/30 transition-colors cursor-pointer ${blood.status === 'critical' ? 'bg-rose-50/20' : ''}`}
                     >
                       <td className="px-6 py-4"><span className="text-base font-black text-slate-900 font-mono">{blood.type}</span></td>
                       <td className="px-6 py-4">
-                        <span className={`text-base font-bold font-mono ${
-                          blood.status === 'critical' ? 'text-[#C21C24]' : blood.status === 'low' ? 'text-amber-600' : 'text-slate-800'
-                        }`}>{blood.units}</span>
+                        <span className={`text-base font-bold font-mono ${blood.status === 'critical' ? 'text-[#C21C24]' : blood.status === 'low' ? 'text-amber-600' : 'text-slate-800'
+                          }`}>{blood.units}</span>
                         <span className="text-slate-400 font-medium ml-1">units</span>
                       </td>
                       <td className="px-6 py-4 text-slate-500 font-mono">{blood.threshold} units</td>
                       <td className="px-6 py-4 max-w-xs">
                         <div className="w-full bg-slate-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              blood.status === 'critical' ? 'bg-[#C21C24]' : blood.status === 'low' ? 'bg-amber-400' : 'bg-emerald-500'
-                            }`}
+                          <div
+                            className={`h-2 rounded-full ${blood.status === 'critical' ? 'bg-[#C21C24]' : blood.status === 'low' ? 'bg-amber-400' : 'bg-emerald-500'
+                              }`}
                             style={{ width: `${Math.min((blood.units / (blood.threshold * 2.5)) * 100, 100)}%` }}
                           ></div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' : 
-                          blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                            blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          }`}>
                           {blood.status === 'critical' ? 'CRITICAL' : blood.status === 'low' ? 'LOWSTOCK' : 'STABLE'}
                         </span>
                       </td>
@@ -820,9 +822,9 @@ export default function AdminDashboard() {
                       return (
                         <tr key={donor.id} className="hover:bg-slate-50/50 cursor-pointer" onClick={() => { setSelectedDonor(donor); setTab('donor_detail'); }}>
                           <td className="px-6 py-4 font-bold text-slate-900">{donor.name}</td>
-                          <td className="px-6 py-4"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span></td>
+                          <td className="px-6 py-4"><span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">{donor.bloodType}</span></td>
                           <td className="px-6 py-4 text-slate-600">{donatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                          <td className="px-6 py-4 text-rose-600">{expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                          <td className="px-6 py-4 text-slate-500">{expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                         </tr>
                       );
                     })}
@@ -843,7 +845,7 @@ export default function AdminDashboard() {
                 <div><strong>Name:</strong> {selectedDonor.name}</div>
                 <div><strong>Blood Type:</strong> {selectedDonor.bloodType}</div>
                 <div><strong>Last Donation:</strong> {new Date(selectedDonor.lastDonation).toLocaleDateString()}</div>
-                <div><strong>Expiry Date:</strong> {new Date(new Date(selectedDonor.lastDonation).getTime() + 35*24*60*60*1000).toLocaleDateString()}</div>
+                <div><strong>Expiry Date:</strong> {new Date(new Date(selectedDonor.lastDonation).getTime() + 35 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
                 <div><strong>Status:</strong> {selectedDonor.status || 'N/A'}</div>
                 <div><strong>Contact:</strong> {selectedDonor.phone || 'N/A'}</div>
               </div>
@@ -860,7 +862,7 @@ export default function AdminDashboard() {
                     <h3 className="font-bold text-slate-900 text-sm tracking-tight">Eligible Donor Detection (Donor Recall)</h3>
                     <p className="text-xs text-slate-500 mt-1">Detects donors whose last donation was 85–90 days ago and triggers SMS notifications.</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowSmsConfirmModal(true)}
                     className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2"
                   >
@@ -902,19 +904,19 @@ export default function AdminDashboard() {
                           <tr key={donor.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-3.5 font-bold text-slate-900">{donor.name}</td>
                             <td className="px-6 py-3.5">
-                              <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{donor.bloodType}</span>
+                              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">{donor.bloodType}</span>
                             </td>
-                            <td className="px-6 py-3.5 text-slate-650">{donor.lastDonation}</td>
+                            <td className="px-6 py-3.5 text-slate-655">{donor.lastDonation}</td>
                             <td className="px-6 py-3.5 text-amber-600 font-extrabold">{donor.diffDays} Days</td>
                             <td className="px-6 py-3.5 text-center">
                               <button
                                 onClick={() => {
                                   dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
                                   const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
-                                  dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n=>n[0]).join(''));
+                                  dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
                                   alert(`Recall SMS sent to ${donor.name}!`);
                                 }}
-                                className="bg-[#C21C24] text-white text-[10px] px-2.5 py-1 rounded font-bold hover:bg-[#A8181F] transition"
+                                className="bg-slate-900 text-white text-[10px] px-2.5 py-1 rounded font-bold hover:bg-slate-800 transition"
                               >
                                 Send Recall
                               </button>
@@ -968,21 +970,19 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-6 py-3.5 font-mono text-slate-500">{r.recallDate}</td>
                               <td className="px-6 py-3.5 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                  r.smsStatus === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                  r.smsStatus === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                  'bg-amber-50 border-amber-100 text-amber-700'
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${r.smsStatus === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                    r.smsStatus === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                      'bg-amber-50 border-amber-100 text-amber-700'
+                                  }`}>
                                   {r.smsStatus}
                                 </span>
                               </td>
                               <td className="px-6 py-3.5 text-center">
                                 {r.donorResponse ? (
-                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                    r.donorResponse === 'Committed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                    r.donorResponse === 'Declined' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                    'bg-slate-50 border-slate-200 text-slate-650'
-                                  }`}>
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${r.donorResponse === 'Committed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                      r.donorResponse === 'Declined' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                        'bg-slate-50 border-slate-200 text-slate-650'
+                                    }`}>
                                     {r.donorResponse}
                                   </span>
                                 ) : (
@@ -1035,11 +1035,10 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-slate-600">SPMC Blood Production Services</td>
                       <td className="px-6 py-4 text-[#C21C24] font-bold">YES</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          arrivedAtFacility 
-                            ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${arrivedAtFacility
+                            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
                             : 'bg-amber-50 border-amber-100 text-amber-700 animate-pulse'
-                        }`}>
+                          }`}>
                           {arrivedAtFacility ? 'Arrived at Facility' : 'Awaiting Arrival'}
                         </span>
                       </td>
@@ -1112,7 +1111,7 @@ export default function AdminDashboard() {
                   {(isSuperAdmin || isAdministrator) && (
                     <button
                       onClick={() => setShowAddUserModal(true)}
-                      className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm cursor-pointer">
+                      className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm cursor-pointer">
                       <Plus className="w-4 h-4" /> Add System User
                     </button>
                   )}
@@ -1132,12 +1131,12 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
                       {users.map((u) => {
                         const roleColors = {
-                          'Super Admin':         'bg-purple-50 border-purple-200 text-purple-700',
-                          'Administrator':       'bg-blue-50 border-blue-200 text-blue-700',
-                          'Registry Staff':      'bg-emerald-50 border-emerald-200 text-emerald-700',
-                          'Blood Bank Staff':    'bg-rose-50 border-rose-100 text-[#C21C24]',
-                          'Issuance Personnel':  'bg-amber-50 border-amber-200 text-amber-700',
-                          'Hospital User':       'bg-slate-50 border-slate-200 text-slate-600',
+                          'Super Admin': 'bg-purple-50 border-purple-200 text-purple-700',
+                          'Administrator': 'bg-blue-50 border-blue-200 text-blue-700',
+                          'Registry Staff': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                          'Blood Bank Staff': 'bg-orange-50 border-orange-200 text-orange-700',
+                          'Issuance Personnel': 'bg-amber-50 border-amber-200 text-amber-700',
+                          'Hospital User': 'bg-slate-50 border-slate-200 text-slate-600',
                         };
                         const roleCls = roleColors[u.role] || 'bg-slate-50 border-slate-200 text-slate-600';
                         const isSuperAdminUser = u.role === 'Super Admin';
@@ -1184,8 +1183,8 @@ export default function AdminDashboard() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden fade-in">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
                 <div className="search">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Search registry..."
                     className="search__input text-xs"
                     value={searchQuery}
@@ -1195,13 +1194,12 @@ export default function AdminDashboard() {
                     <Search className="search__icon" />
                   </button>
                 </div>
-                <button 
+                <button
                   onClick={() => setFlaggedStatus(!accountFlagged)}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border ${
-                    accountFlagged 
-                      ? 'bg-rose-50 border-rose-100 text-[#C21C24]' 
-                      : 'bg-slate-50 border-slate-250 text-slate-650 hover:bg-slate-100'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border ${accountFlagged
+                      ? 'bg-amber-50 border-amber-200 text-amber-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
                 >
                   <ShieldAlert className="w-4 h-4" />
                   <span>{accountFlagged ? 'Medical Hold Applied (Maria Santos)' : 'Flag / Apply Deferral Record'}</span>
@@ -1222,15 +1220,15 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
                     {donors
-                      .filter(d => 
-                        d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      .filter(d =>
+                        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         d.bloodType.toLowerCase().includes(searchQuery.toLowerCase())
                       )
                       .map((d) => (
                         <tr key={d.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-3.5 font-mono text-[11px] font-bold text-slate-400">{d.id}</td>
                           <td className="px-6 py-3.5 font-bold text-slate-900">{d.name}</td>
-                          <td className="px-6 py-3.5"><span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{d.bloodType}</span></td>
+                          <td className="px-6 py-3.5"><span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">{d.bloodType}</span></td>
                           <td className="px-6 py-3.5 text-slate-500 font-mono font-normal">{d.phone}</td>
                           <td className="px-6 py-3.5">
                             {(() => {
@@ -1246,11 +1244,10 @@ export default function AdminDashboard() {
                             })()}
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              d.name === 'Maria C. Santos' && accountFlagged 
-                                ? 'bg-rose-50 border-rose-100 text-[#C21C24]' 
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${d.name === 'Maria C. Santos' && accountFlagged
+                                ? 'bg-amber-50 border-amber-200 text-amber-700'
                                 : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                            }`}>
+                              }`}>
                               {d.name === 'Maria C. Santos' && accountFlagged ? 'Temporary Deferral' : 'Cleared'}
                             </span>
                           </td>
@@ -1262,121 +1259,120 @@ export default function AdminDashboard() {
             </div>
           )}
 
-      {/* TAB: SMS LOGS — Table 17 Schema */}
-      {tab === 'smslog' && (
-        <div className="space-y-5 fade-in">
-          {/* Stats bar */}
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Total Sent', value: smsLogs.filter(l => l.status === 'Sent').length, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-              { label: 'Failed', value: smsLogs.filter(l => l.status === 'Failed').length, color: 'text-[#C21C24]', bg: 'bg-rose-50', border: 'border-rose-100' },
-              { label: 'Pending', value: smsLogs.filter(l => l.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-            ].map(stat => (
-              <div key={stat.label} className={`${stat.bg} border ${stat.border} rounded-xl p-4`}>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
-                <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
-                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">SMS deliveries</p>
+          {/* TAB: SMS LOGS — Table 17 Schema */}
+          {tab === 'smslog' && (
+            <div className="space-y-5 fade-in">
+              {/* Stats bar */}
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: 'Total Sent', value: smsLogs.filter(l => l.status === 'Sent').length, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                  { label: 'Failed', value: smsLogs.filter(l => l.status === 'Failed').length, color: 'text-[#C21C24]', bg: 'bg-rose-50', border: 'border-rose-100' },
+                  { label: 'Pending', value: smsLogs.filter(l => l.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+                ].map(stat => (
+                  <div key={stat.label} className={`${stat.bg} border ${stat.border} rounded-xl p-4`}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
+                    <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">SMS deliveries</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Full Table */}
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm tracking-tight">SMS Gateway Transaction Log</h3>
-                <p className="text-xs text-slate-500 mt-1">All SMS delivery attempts via the configured gateway. Failed entries include error details.</p>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono">Table: sms_logs</span>
-            </div>
-            <div className="overflow-x-auto">
-              {smsLogs.length === 0 ? (
-                <div className="px-5 py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center">
-                  <MessageSquare className="w-8 h-8 text-slate-300 mb-2" />
-                  <span>No SMS transaction records located.</span>
+              {/* Full Table */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm tracking-tight">SMS Gateway Transaction Log</h3>
+                    <p className="text-xs text-slate-500 mt-1">All SMS delivery attempts via the configured gateway. Failed entries include error details.</p>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">Table: sms_logs</span>
                 </div>
-              ) : (
-                <table className="min-w-full text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <tr>
-                      <th className="px-5 py-3 text-left">SMS ID</th>
-                      <th className="px-5 py-3 text-left">Donor</th>
-                      <th className="px-5 py-3 text-left">Recall ID</th>
-                      <th className="px-5 py-3 text-left">Message</th>
-                      <th className="px-5 py-3 text-left">Sent At</th>
-                      <th className="px-5 py-3 text-center">Status</th>
-                      <th className="px-5 py-3 text-left">Error Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                    {smsLogs.map((log, i) => (
-                      <tr key={log.smsId || i} className="hover:bg-slate-50/50 transition-colors">
-                        {/* SMS ID */}
-                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400">{log.smsId || '—'}</td>
+                <div className="overflow-x-auto">
+                  {smsLogs.length === 0 ? (
+                    <div className="px-5 py-16 text-center text-slate-400 text-xs flex flex-col items-center justify-center">
+                      <MessageSquare className="w-8 h-8 text-slate-300 mb-2" />
+                      <span>No SMS transaction records located.</span>
+                    </div>
+                  ) : (
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <tr>
+                          <th className="px-5 py-3 text-left">SMS ID</th>
+                          <th className="px-5 py-3 text-left">Donor</th>
+                          <th className="px-5 py-3 text-left">Recall ID</th>
+                          <th className="px-5 py-3 text-left">Message</th>
+                          <th className="px-5 py-3 text-left">Sent At</th>
+                          <th className="px-5 py-3 text-center">Status</th>
+                          <th className="px-5 py-3 text-left">Error Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                        {smsLogs.map((log, i) => (
+                          <tr key={log.smsId || i} className="hover:bg-slate-50/50 transition-colors">
+                            {/* SMS ID */}
+                            <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400">{log.smsId || '—'}</td>
 
-                        {/* Donor */}
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: log.color || '#94a3b8' }}>
-                              {log.initials}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 whitespace-nowrap">{log.name}</p>
-                              <p className="text-[10px] text-slate-400 font-mono">{log.phone}</p>
-                            </div>
-                          </div>
-                        </td>
+                            {/* Donor */}
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: log.color || '#94a3b8' }}>
+                                  {log.initials}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-900 whitespace-nowrap">{log.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono">{log.phone}</p>
+                                </div>
+                              </div>
+                            </td>
 
-                        {/* Recall ID */}
-                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">
-                          {log.recallId || <span className="italic font-normal text-slate-300">none</span>}
-                        </td>
+                            {/* Recall ID */}
+                            <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">
+                              {log.recallId || <span className="italic font-normal text-slate-300">none</span>}
+                            </td>
 
-                        {/* Message */}
-                        <td className="px-5 py-3.5 max-w-xs">
-                          <p className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-[10px] text-slate-600 leading-relaxed line-clamp-2">
-                            {log.message || log.msg}
-                          </p>
-                        </td>
+                            {/* Message */}
+                            <td className="px-5 py-3.5 max-w-xs">
+                              <p className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-[10px] text-slate-600 leading-relaxed line-clamp-2">
+                                {log.message || log.msg}
+                              </p>
+                            </td>
 
-                        {/* Sent At */}
-                        <td className="px-5 py-3.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">
-                          {log.sentAt ? (
-                            <>
-                              <p>{log.sentAt.split('T')[0]}</p>
-                              <p className="text-slate-400">{log.sentAt.split('T')[1]}</p>
-                            </>
-                          ) : log.time || '—'}
-                        </td>
+                            {/* Sent At */}
+                            <td className="px-5 py-3.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">
+                              {log.sentAt ? (
+                                <>
+                                  <p>{log.sentAt.split('T')[0]}</p>
+                                  <p className="text-slate-400">{log.sentAt.split('T')[1]}</p>
+                                </>
+                              ) : log.time || '—'}
+                            </td>
 
-                        {/* Status */}
-                        <td className="px-5 py-3.5 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
-                            log.status === 'Sent'    ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                            log.status === 'Failed'  ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                            log.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                                       'bg-emerald-50 border-emerald-100 text-emerald-700'
-                          }`}>
-                            {log.status || 'Sent'}
-                          </span>
-                        </td>
+                            {/* Status */}
+                            <td className="px-5 py-3.5 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${log.status === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                  log.status === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                    log.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                      'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                }`}>
+                                {log.status || 'Sent'}
+                              </span>
+                            </td>
 
-                        {/* Error Details */}
-                        <td className="px-5 py-3.5 max-w-xs">
-                          {log.errorMessage
-                            ? <p className="bg-rose-50 border border-rose-100 text-[#C21C24] rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed font-mono">{log.errorMessage}</p>
-                            : <span className="text-slate-300 italic font-normal">—</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                            {/* Error Details */}
+                            <td className="px-5 py-3.5 max-w-xs">
+                              {log.errorMessage
+                                ? <p className="bg-rose-50 border border-rose-100 text-[#C21C24] rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed font-mono">{log.errorMessage}</p>
+                                : <span className="text-slate-300 italic font-normal">—</span>
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
           {/* TAB: BLOOD ISSUANCE */}
           {tab === 'issuance' && (
@@ -1452,7 +1448,7 @@ export default function AdminDashboard() {
                               {req.diagnosis && <p className="text-[9px] text-blue-600 font-bold mt-1">Dx: {req.diagnosis}</p>}
                             </td>
                             <td className="px-6 py-4">
-                              <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">{req.patientBloodType}</span>
+                              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">{req.patientBloodType}</span>
                               <span className="ml-2 font-bold text-slate-800">{req.units} bags</span>
                               {stockInsufficient && (
                                 <p className="text-[9px] text-[#C21C24] font-bold mt-1 flex items-center gap-1">
@@ -1461,20 +1457,18 @@ export default function AdminDashboard() {
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                req.urgency === 'emergency' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' : req.urgency === 'urgent' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-slate-50 border-slate-100 text-slate-500'
-                              }`}>{req.urgency}</span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${req.urgency === 'emergency' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' : req.urgency === 'urgent' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-slate-50 border-slate-100 text-slate-500'
+                                }`}>{req.urgency}</span>
                             </td>
                             <td className="px-6 py-4">
                               <p className="font-bold text-slate-800">{req.contactPerson}</p>
                               <p className="text-[10px] text-slate-400 font-mono">{req.contactNumber}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                req.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                                req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
-                              }`}>{req.status}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${req.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                  req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                    req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
+                                }`}>{req.status}</span>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex gap-2 flex-wrap">
@@ -1490,7 +1484,7 @@ export default function AdminDashboard() {
                                   <button onClick={() => updateBloodRequestStatus(req.refNo, 'Fulfilled')} className="bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded hover:bg-emerald-700 transition">Fulfill</button>
                                 )}
                                 {req.status !== 'Fulfilled' && req.status !== 'Declined' && (
-                                  <button onClick={() => updateBloodRequestStatus(req.refNo, 'Declined')} className="border border-slate-200 text-[#C21C24] hover:bg-rose-50/35 font-bold text-[10px] px-2.5 py-1.5 rounded transition">Decline</button>
+                                  <button onClick={() => updateBloodRequestStatus(req.refNo, 'Declined')} className="border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-[10px] px-2.5 py-1.5 rounded transition">Decline</button>
                                 )}
                                 {(req.status === 'Fulfilled' || req.status === 'Declined') && (
                                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Completed</span>
@@ -1518,7 +1512,7 @@ export default function AdminDashboard() {
                   </div>
                   <button
                     onClick={() => { setEditingHospital(null); setHospitalForm({ name: '', type: 'Government', contact: '', phone: '', email: '', address: '' }); setShowHospitalModal(true); }}
-                    className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm"
+                    className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm"
                   >
                     <Plus className="w-4 h-4" /> Add Hospital
                   </button>
@@ -1546,18 +1540,16 @@ export default function AdminDashboard() {
                             <p className="font-bold text-slate-900">{h.name}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              h.type === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                              h.type === 'Blood Bank' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                              'bg-slate-50 border-slate-200 text-slate-600'
-                            }`}>{h.type}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${h.type === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                h.type === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
+                                  'bg-slate-50 border-slate-200 text-slate-600'
+                              }`}>{h.type}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              h.registrationStatus === 'Active' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                              h.registrationStatus === 'Suspended' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                              'bg-amber-50 border-amber-100 text-amber-700'
-                            }`}>{h.registrationStatus || 'Pending'}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${h.registrationStatus === 'Active' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                h.registrationStatus === 'Suspended' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                  'bg-amber-50 border-amber-100 text-amber-700'
+                              }`}>{h.registrationStatus || 'Pending'}</span>
                           </td>
                           <td className="px-6 py-4 text-slate-700">{h.contact}</td>
                           <td className="px-6 py-4 font-mono text-slate-600">{h.phone}</td>
@@ -1571,7 +1563,7 @@ export default function AdminDashboard() {
                               >Edit</button>
                               <button
                                 onClick={() => { if (window.confirm(`Delete ${h.name}?`)) deleteHospital(h.id); }}
-                                className="border border-rose-100 bg-rose-50 text-[#C21C24] font-bold text-[10px] px-2.5 py-1 rounded hover:bg-rose-100 transition"
+                                className="border border-slate-200 bg-slate-50 text-slate-700 font-bold text-[10px] px-2.5 py-1 rounded hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition"
                               >Delete</button>
                             </div>
                           </td>
@@ -1587,7 +1579,7 @@ export default function AdminDashboard() {
           {/* TAB: DEMAND FORECASTING – OVERVIEW + DRILL-DOWN */}
           {tab === 'forecasting' && (() => {
             const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
-            const COMPONENTS  = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
+            const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
             // Safety guard — persist middleware may return undefined for new fields
             const gf = Array.isArray(granularForecasts) ? granularForecasts : [];
 
@@ -1627,7 +1619,7 @@ export default function AdminDashboard() {
 
             // ── FILTERED MODE: specific combo ──
             const filtered = gf.filter(f =>
-              (fcHospital  === 'ALL' || f.hospitalId  === fcHospital)  &&
+              (fcHospital === 'ALL' || f.hospitalId === fcHospital) &&
               (fcBloodType === 'ALL' || f.bloodTypeId === fcBloodType) &&
               (fcComponent === 'ALL' || f.componentId === fcComponent)
             );
@@ -1653,8 +1645,8 @@ export default function AdminDashboard() {
                   label: wkLabel,
                   actual: null,
                   predicted: rows.reduce((s, f) => s + f.predictedDemand, 0),
-                  upper:     rows.reduce((s, f) => s + f.upperBound, 0),
-                  lower:     rows.reduce((s, f) => s + f.lowerBound, 0),
+                  upper: rows.reduce((s, f) => s + f.upperBound, 0),
+                  lower: rows.reduce((s, f) => s + f.lowerBound, 0),
                 };
               }).filter(Boolean);
               return [...histPart, ...predPart];
@@ -1664,7 +1656,7 @@ export default function AdminDashboard() {
 
             // KPI cards
             const nextWkPredOverview = overviewChartData.find(d => d.predicted !== null);
-            const nextWkFiltered     = filteredChartData.find(d => d.predicted !== null);
+            const nextWkFiltered = filteredChartData.find(d => d.predicted !== null);
             const totalForecastedUnitsNextWk = isOverview
               ? (nextWkPredOverview?.predicted ?? 0)
               : (nextWkFiltered?.predicted ?? 0);
@@ -1689,7 +1681,7 @@ export default function AdminDashboard() {
 
                 {/* Algorithm banner */}
                 <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-5 flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#C21C24] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
@@ -1711,7 +1703,7 @@ export default function AdminDashboard() {
                       <p className="text-xs text-slate-400 mt-0.5">
                         {isOverview
                           ? <span className="text-emerald-600 font-bold">📊 Overview Mode — Total demand across all hospitals, blood types, and components</span>
-                          : <span className="text-[#C21C24] font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
+                          : <span className="text-slate-700 font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h => h.id === fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
                         }
                       </p>
                     </div>
@@ -1723,7 +1715,7 @@ export default function AdminDashboard() {
                         </button>
                       )}
                       <button onClick={() => generateGranularForecast(fcWeeks)}
-                        className="bg-[#C21C24] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
+                        className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm">
                         <Activity className="w-3.5 h-3.5" /> Re-run Forecast
                       </button>
                     </div>
@@ -1732,7 +1724,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Hospital</label>
                       <select value={fcHospital} onChange={e => setFcHospital(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Hospitals (Overview)</option>
                         {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                       </select>
@@ -1740,7 +1732,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Blood Type</label>
                       <select value={fcBloodType} onChange={e => setFcBloodType(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Blood Types</option>
                         {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
                       </select>
@@ -1748,7 +1740,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Component</label>
                       <select value={fcComponent} onChange={e => setFcComponent(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Components</option>
                         {COMPONENTS.map(c => <option key={c}>{c}</option>)}
                       </select>
@@ -1756,7 +1748,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Weeks Ahead</label>
                       <select value={fcWeeks} onChange={e => setFcWeeks(Number(e.target.value))}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         {[2, 4, 6, 8].map(w => <option key={w} value={w}>{w} weeks</option>)}
                       </select>
                     </div>
@@ -1784,13 +1776,13 @@ export default function AdminDashboard() {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
                           {isOverview ? 'Total Next-Week Demand' : 'Next-Week (Filtered)'}
                         </p>
-                        <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{totalForecastedUnitsNextWk}</p>
+                        <p className="text-2xl font-extrabold text-slate-900 font-mono">{totalForecastedUnitsNextWk}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {isOverview ? 'units across all hospitals' : `units · ${fcBloodType} ${fcComponent}`}
                         </p>
                       </div>
                       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Avg Historical Demand</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">AVERAGE Historical Demand</p>
                         <p className="text-2xl font-extrabold text-emerald-600 font-mono">{totalHistActual}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {isOverview ? 'total units/week (8-wk avg)' : 'units/week (filtered avg)'}
@@ -1822,7 +1814,7 @@ export default function AdminDashboard() {
                           <h3 className="font-bold text-slate-900 text-sm tracking-tight">
                             {isOverview
                               ? '📊 Overall System Demand Forecast (All Hospitals · All Blood Types · All Components)'
-                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
+                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h => h.id === fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
                             }
                           </h3>
                           <p className="text-xs text-slate-500 mt-0.5">
@@ -1831,7 +1823,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-semibold flex-shrink-0 ml-4">
                           <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
-                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-indigo-500 inline-block rounded"></span>Predicted</span>
                           <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-300 inline-block rounded"></span>Confidence</span>
                         </div>
                       </div>
@@ -1845,10 +1837,10 @@ export default function AdminDashboard() {
                               contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                               formatter={(val, name) => [val ? `${val} units` : '—', name]}
                             />
-                            <Line type="monotone" dataKey="upper"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
-                            <Line type="monotone" dataKey="lower"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
-                            <Line type="monotone" dataKey="actual"    stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
-                            <Line type="monotone" dataKey="predicted" stroke="#C21C24" strokeWidth={3} name="REMA Prediction"    dot={{ r: 4, fill: '#C21C24' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
+                            <Line type="monotone" dataKey="upper" stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="lower" stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
+                            <Line type="monotone" dataKey="predicted" stroke="#4F46E5" strokeWidth={3} name="REMA Prediction" dot={{ r: 4, fill: '#4F46E5' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -1871,8 +1863,8 @@ export default function AdminDashboard() {
                             const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
                             return (
                               <button key={bt} onClick={() => setFcBloodType(bt)}
-                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-[#C21C24] hover:bg-rose-50 transition cursor-pointer group">
-                                <span className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-black text-[11px] flex items-center justify-center group-hover:bg-[#C21C24] group-hover:text-white transition font-mono">{bt}</span>
+                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition cursor-pointer group">
+                                <span className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition font-mono">{bt}</span>
                                 <span className="font-extrabold text-slate-900 text-sm">{total}</span>
                                 <span className="text-[9px] text-slate-400 font-semibold">{pct}% of total</span>
                               </button>
@@ -1900,12 +1892,12 @@ export default function AdminDashboard() {
                               <button key={hosp.id} onClick={() => setFcHospital(hosp.id)}
                                 className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group">
                                 <div className="w-36 flex-shrink-0">
-                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
+                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-600 transition">{hosp.name.split('(')[0].trim()}</p>
                                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
                                 </div>
                                 <div className="flex-1">
                                   <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
+                                    <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${barW}%` }} />
                                   </div>
                                 </div>
                                 <div className="w-20 text-right flex-shrink-0">
@@ -1920,69 +1912,144 @@ export default function AdminDashboard() {
                       </div>
                     )}
 
-                    {/* Forecast Table — schema match, filtered view */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                            Forecast Records {!isOverview && <span className="text-[#C21C24]">(Filtered)</span>}
-                          </h3>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {isOverview
-                              ? `Showing top 20 records by predicted demand — use filters to drill down`
-                              : `${filtered.length} records matching current filter`
-                            }
-                          </p>
+                    {/* Forecast Records Table — with independent inline filters */}
+                    {(() => {
+                      const recFiltered = gf.filter(f =>
+                        (recHospital === 'ALL' || f.hospitalId === recHospital) &&
+                        (recBloodType === 'ALL' || f.bloodTypeId === recBloodType) &&
+                        (recComponent === 'ALL' || f.componentId === recComponent) &&
+                        (recWeek === 'ALL' || f.forecastWeekLabel === recWeek) &&
+                        (!recSearch || [
+                          f.forecastId,
+                          hospitals.find(h => h.id === f.hospitalId)?.name || '',
+                          f.bloodTypeId,
+                          f.componentId,
+                          f.forecastWeekLabel
+                        ].some(v => v.toLowerCase().includes(recSearch.toLowerCase())))
+                      );
+                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recWeek !== 'ALL' || recSearch !== '';
+                      const displayRows = recIsFiltered
+                        ? recFiltered
+                        : [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand);
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                          {/* Table header + inline filters */}
+                          <div className="px-6 py-4 border-b border-slate-100">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                                  Forecast Records {recIsFiltered && <span className="text-slate-600">(Filtered)</span>}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {recIsFiltered
+                                    ? `${displayRows.length} record${displayRows.length !== 1 ? 's' : ''} matching filter`
+                                    : `All ${displayRows.length} records sorted by predicted demand`
+                                  }
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {recIsFiltered && (
+                                  <button
+                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecWeek('ALL'); setRecSearch(''); }}
+                                    className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition"
+                                  >↩ Clear</button>
+                                )}
+                                <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
+                              </div>
+                            </div>
+                            {/* Inline filter row */}
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hospital</label>
+                                <select value={recHospital} onChange={e => setRecHospital(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Hospitals</option>
+                                  {hospitals.map(h => <option key={h.id} value={h.id}>{h.name.split('(')[0].trim()}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type</label>
+                                <select value={recBloodType} onChange={e => setRecBloodType(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Blood Types</option>
+                                  {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Component</label>
+                                <select value={recComponent} onChange={e => setRecComponent(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Components</option>
+                                  {COMPONENTS.map(c => <option key={c}>{c}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Forecast Week</label>
+                                <select value={recWeek} onChange={e => setRecWeek(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Weeks</option>
+                                  {[...new Set(gf.map(f => f.forecastWeekLabel))].sort().map(wk => <option key={wk} value={wk}>{wk}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search</label>
+                                <input
+                                  type="text"
+                                  value={recSearch}
+                                  onChange={e => setRecSearch(e.target.value)}
+                                  placeholder="ID, hospital, type…"
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-xs">
+                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                  <th className="px-5 py-3 text-left">Forecast ID</th>
+                                  <th className="px-5 py-3 text-left">Hospital</th>
+                                  <th className="px-5 py-3 text-left">Blood Type</th>
+                                  <th className="px-5 py-3 text-left">Component</th>
+                                  <th className="px-5 py-3 text-left">Forecast Week</th>
+                                  <th className="px-5 py-3 text-right">Predicted Demand</th>
+                                  <th className="px-5 py-3 text-center">Confidence</th>
+                                  <th className="px-5 py-3 text-center">Trend</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                {displayRows.length === 0 ? (
+                                  <tr><td colSpan={8} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
+                                ) : displayRows.map(f => (
+                                  <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
+                                    <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] border border-slate-200 font-mono">{f.bloodTypeId}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 font-mono text-slate-500">{f.forecastWeek} <span className="text-[9px] text-slate-400">({f.forecastWeekLabel})</span></td>
+                                    <td className="px-5 py-2.5 text-right">
+                                      <span className="text-base font-black text-indigo-600 font-mono">{f.predictedDemand}</span>
+                                      <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound}–{f.upperBound}</td>
+                                    <td className="px-5 py-2.5 text-center">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                          f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                            'bg-slate-50 border-slate-200 text-slate-500'
+                                        }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-xs">
-                          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            <tr>
-                              <th className="px-5 py-3 text-left">Forecast ID</th>
-                              <th className="px-5 py-3 text-left">Hospital</th>
-                              <th className="px-5 py-3 text-left">Blood Type</th>
-                              <th className="px-5 py-3 text-left">Component</th>
-                              <th className="px-5 py-3 text-left">Forecast Week</th>
-                              <th className="px-5 py-3 text-right">Predicted Demand</th>
-                              <th className="px-5 py-3 text-center">Confidence</th>
-                              <th className="px-5 py-3 text-center">Trend</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                            {(isOverview
-                              ? [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand).slice(0, 20)
-                              : filtered
-                            ).map(f => (
-                              <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
-                                <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>
-                                <td className="px-5 py-2.5">
-                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-rose-50 text-[#C21C24] font-black text-[9px] border border-rose-100 font-mono">{f.bloodTypeId}</span>
-                                </td>
-                                <td className="px-5 py-2.5">
-                                  <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
-                                </td>
-                                <td className="px-5 py-2.5 font-mono text-slate-500">{f.forecastWeek} <span className="text-[9px] text-slate-400">({f.forecastWeekLabel})</span></td>
-                                <td className="px-5 py-2.5 text-right">
-                                  <span className="text-base font-black text-[#C21C24] font-mono">{f.predictedDemand}</span>
-                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
-                                </td>
-                                <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound}–{f.upperBound}</td>
-                                <td className="px-5 py-2.5 text-center">
-                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                    f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                    f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                    'bg-slate-50 border-slate-200 text-slate-500'
-                                  }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -2006,14 +2073,12 @@ export default function AdminDashboard() {
 
                 {allocations.map(({ bloodType, status, allocations: hospAllocs }) => (
                   <div key={bloodType} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                    <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${
-                      status === 'critical' ? 'bg-rose-50/30' : status === 'low' ? 'bg-amber-50/20' : ''
-                    }`}>
+                    <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${status === 'critical' ? 'bg-rose-50/30' : status === 'low' ? 'bg-amber-50/20' : ''
+                      }`}>
                       <div className="flex items-center gap-3">
-                        <span className="px-2 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-sm font-mono">{bloodType}</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          status === 'critical' ? 'text-[#C21C24]' : status === 'low' ? 'text-amber-600' : 'text-emerald-600'
-                        }`}>{status === 'critical' ? '⚠ Critical' : status === 'low' ? '↓ Low Stock' : '✓ Stable'}</span>
+                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-sm font-mono">{bloodType}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${status === 'critical' ? 'text-[#C21C24]' : status === 'low' ? 'text-amber-600' : 'text-emerald-600'
+                          }`}>{status === 'critical' ? '⚠ Critical' : status === 'low' ? '↓ Low Stock' : '✓ Stable'}</span>
                         <span className="text-[10px] text-slate-400">Stock: {hospAllocs[0]?.currentStock} / Threshold: {hospAllocs[0]?.threshold} / Releasable: {hospAllocs[0]?.safeToRelease}</span>
                       </div>
                       {hospAllocs[0]?.safeToRelease === 0 && (
@@ -2039,11 +2104,10 @@ export default function AdminDashboard() {
                             <tr key={a.hospitalId} className="hover:bg-slate-50/50 transition-colors">
                               <td className="px-6 py-3 font-bold text-slate-900">{a.hospitalName}</td>
                               <td className="px-6 py-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  a.hospitalType === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                                  a.hospitalType === 'Blood Bank' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                  'bg-slate-50 border-slate-200 text-slate-600'
-                                }`}>{a.hospitalType}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${a.hospitalType === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                    a.hospitalType === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
+                                      'bg-slate-50 border-slate-200 text-slate-600'
+                                  }`}>{a.hospitalType}</span>
                               </td>
                               <td className="px-6 py-3 font-mono text-slate-600">{a.hospitalType === 'Government' ? '1.5×' : a.hospitalType === 'Blood Bank' ? '1.2×' : '1.0×'}</td>
                               <td className="px-6 py-3">
@@ -2074,7 +2138,7 @@ export default function AdminDashboard() {
                         </tbody>
                       </table>
                     ) : (
-                      <div className="px-6 py-5 text-xs text-[#C21C24] font-bold flex items-center gap-2">
+                      <div className="px-6 py-5 text-xs text-amber-700 font-bold flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" /> Cannot allocate – stock is at or below safety threshold. Use Emergency Retrack to locate a lending source.
                       </div>
                     )}
@@ -2086,7 +2150,7 @@ export default function AdminDashboard() {
                   <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
                     <div>
                       <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                        <Database className="w-4 h-4 text-[#C21C24]" /> Distribution Recommendations
+                        <Database className="w-4 h-4 text-indigo-600" /> Distribution Recommendations
                         <span className="text-[10px] font-mono text-slate-400 ml-1">Table 15</span>
                       </h3>
                       <p className="text-xs text-slate-500 mt-0.5">
@@ -2102,7 +2166,7 @@ export default function AdminDashboard() {
                           generateRecommendationsFromForecast();
                         }
                       }}
-                      className="flex items-center gap-2 bg-[#C21C24] hover:bg-[#A8181F] text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-sm"
+                      className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-sm"
                     >
                       <Activity className="w-3.5 h-3.5" />
                       Generate from Latest Forecast
@@ -2141,11 +2205,10 @@ export default function AdminDashboard() {
                                 // Force re-render by dispatching a harmless state update
                                 document.getElementById('rec-filter-active').dispatchEvent(new Event('change', { bubbles: true }));
                               }}
-                              className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition -mb-px ${
-                                activeFilter === f
-                                  ? 'border-[#C21C24] text-[#C21C24]'
+                              className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition -mb-px ${activeFilter === f
+                                  ? 'border-indigo-600 text-indigo-600'
                                   : 'border-transparent text-slate-400 hover:text-slate-600'
-                              }`}
+                                }`}
                             >
                               {f} <span className="ml-1 bg-slate-100 px-1 rounded font-mono">{counts[f]}</span>
                             </button>
@@ -2195,7 +2258,7 @@ export default function AdminDashboard() {
 
                                       {/* Blood Type */}
                                       <td className="px-5 py-3 text-center">
-                                        <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">
+                                        <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">
                                           {rec.bloodTypeId}
                                         </span>
                                       </td>
@@ -2216,11 +2279,10 @@ export default function AdminDashboard() {
 
                                       {/* Status */}
                                       <td className="px-5 py-3 text-center">
-                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
-                                          rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                          rec.status === 'Rejected' ? 'bg-rose-50 text-[#C21C24] border-rose-100' :
-                                          'bg-amber-50 text-amber-700 border-amber-100'
-                                        }`}>
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                            rec.status === 'Rejected' ? 'bg-rose-50 text-[#C21C24] border-rose-100' :
+                                              'bg-amber-50 text-amber-700 border-amber-100'
+                                          }`}>
                                           {rec.status}
                                         </span>
                                       </td>
@@ -2237,7 +2299,7 @@ export default function AdminDashboard() {
                                             </button>
                                             <button
                                               onClick={() => rejectRecommendation(rec.recommendationId)}
-                                              className="bg-white border border-rose-200 text-[#C21C24] hover:bg-rose-50 font-bold text-[10px] px-3 py-1 rounded transition"
+                                              className="bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-[10px] px-3 py-1 rounded transition"
                                             >
                                               Reject
                                             </button>
@@ -2270,7 +2332,7 @@ export default function AdminDashboard() {
             <div className="space-y-4 fade-in">
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
-                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Distribution History</h3>
+                  <h3 className="font-bold text-slate-900 text-sm tracking-tight">Distribution Summary</h3>
                   <select
                     value={distHospitalFilter}
                     onChange={e => setDistHospitalFilter(e.target.value)}
@@ -2299,16 +2361,16 @@ export default function AdminDashboard() {
                         .map(log => (
                           <tr
                             key={log.id}
-                            className="hover:bg-rose-50/20 transition-colors cursor-pointer group"
+                            className="hover:bg-indigo-50/30 transition-colors cursor-pointer group"
                             onClick={() => openDistLog(log)}
                           >
                             <td className="px-6 py-3 font-mono text-[11px] font-bold text-slate-400">{log.id}</td>
-                            <td className="px-6 py-3 font-bold text-slate-900 group-hover:text-[#C21C24] transition-colors">{log.hospitalName}</td>
+                            <td className="px-6 py-3 font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{log.hospitalName}</td>
                             <td className="px-6 py-3 font-bold text-slate-800 font-mono">{log.units} bags</td>
                             <td className="px-6 py-3 text-slate-600">{log.date}</td>
                             <td className="px-6 py-3 text-slate-500">{log.allocatedBy}</td>
                             <td className="px-6 py-3">
-                              <span className="text-[10px] text-slate-400 group-hover:text-[#C21C24] transition-colors flex items-center gap-1 font-bold">View Record <ChevronRight className="w-3 h-3" /></span>
+                              <span className="text-[10px] text-slate-400 group-hover:text-indigo-600 transition-colors flex items-center gap-1 font-bold">View Record <ChevronRight className="w-3 h-3" /></span>
                             </td>
                           </tr>
                         ))}
@@ -2318,8 +2380,8 @@ export default function AdminDashboard() {
                     .filter(log => distHospitalFilter === 'ALL' || log.hospitalId === distHospitalFilter)
                     .filter(log => !emergencyBloodType || log.bloodType === emergencyBloodType)
                     .length === 0 && (
-                    <div className="px-6 py-12 text-center text-slate-400 text-xs">No distribution records found.</div>
-                  )}
+                      <div className="px-6 py-12 text-center text-slate-400 text-xs">No distribution records found.</div>
+                    )}
                 </div>
               </div>
 
@@ -2343,7 +2405,7 @@ export default function AdminDashboard() {
 
             const getBulkDistributionData = (log) => {
               const types = ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
-              
+
               return types.map(type => {
                 let unitsReleased = 0;
                 if (type === log.bloodType) {
@@ -2377,8 +2439,8 @@ export default function AdminDashboard() {
                   </div>
                   <button
                     onClick={() => setTab('hospital_history')}
-                    className="text-xs text-[#C21C24] font-bold hover:underline"
-                  >← Back to Distribution History</button>
+                    className="text-xs text-indigo-600 font-bold hover:underline"
+                  >← Back to Distribution Summary</button>
                 </div>
 
                 <div className="overflow-x-auto border border-slate-100 rounded-lg">
@@ -2424,7 +2486,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             {item.unitsReleased > 0 ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-50 border-rose-100 text-[#C21C24] font-mono">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-slate-100 border-slate-200 text-slate-700 font-mono">
                                 {fmt(item.expiryDate)}
                               </span>
                             ) : (
@@ -2469,21 +2531,19 @@ export default function AdminDashboard() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setReportsTab('stock')}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                        reportsTab === 'stock'
-                          ? 'bg-[#C21C24] text-white shadow-sm'
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${reportsTab === 'stock'
+                          ? 'bg-slate-900 text-white shadow-sm'
                           : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       Daily Stock Summary
                     </button>
                     <button
                       onClick={() => setReportsTab('mbd')}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                        reportsTab === 'mbd'
-                          ? 'bg-[#C21C24] text-white shadow-sm'
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${reportsTab === 'mbd'
+                          ? 'bg-slate-900 text-white shadow-sm'
                           : 'bg-slate-50 border border-slate-200 text-slate-655 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       MBD Collections Report
                     </button>
@@ -2529,13 +2589,12 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.cryo || 0}</td>
                               <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.cryosup || 0}</td>
                               <td className="px-6 py-4 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  item.status === 'safe'
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.status === 'safe'
                                     ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
                                     : item.status === 'low'
                                       ? 'bg-amber-50 border-amber-100 text-amber-700'
                                       : 'bg-rose-50 border-rose-100 text-[#C21C24]'
-                                }`}>
+                                  }`}>
                                   {item.status.toUpperCase()}
                                 </span>
                               </td>
@@ -2543,11 +2602,11 @@ export default function AdminDashboard() {
                           ))}
                           <tr className="bg-slate-50 font-bold border-t border-slate-200">
                             <td className="px-6 py-4 text-slate-800">TOTAL BAGS</td>
-                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.units||0), 0)}</td>
-                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.platelets||0), 0)}</td>
-                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.ffp||0), 0)}</td>
-                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.cryo||0), 0)}</td>
-                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s,i)=>s+(i.cryosup||0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s, i) => s + (i.units || 0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s, i) => s + (i.platelets || 0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s, i) => s + (i.ffp || 0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s, i) => s + (i.cryo || 0), 0)}</td>
+                            <td className="px-6 py-4 text-center text-slate-900 font-mono">{inventory.reduce((s, i) => s + (i.cryosup || 0), 0)}</td>
                             <td className="px-6 py-4 text-center text-slate-500">—</td>
                           </tr>
                         </tbody>
@@ -2570,11 +2629,11 @@ export default function AdminDashboard() {
                       </div>
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Average Turnout Rate</p>
-                        <p className="text-xl font-extrabold text-[#C21C24] font-mono">{avgMbdTurnout}%</p>
+                        <p className="text-xl font-extrabold text-indigo-600 font-mono">{avgMbdTurnout}%</p>
                       </div>
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Total Deferral Records</p>
-                        <p className="text-xl font-extrabold text-amber-600 font-mono">{mbdData.reduce((s,i)=>s+i.deferrals,0)}</p>
+                        <p className="text-xl font-extrabold text-amber-600 font-mono">{mbdData.reduce((s, i) => s + i.deferrals, 0)}</p>
                       </div>
                     </div>
 
@@ -2600,7 +2659,7 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4 text-center text-slate-500 font-mono">{item.date}</td>
                               <td className="px-6 py-4 text-center font-bold text-slate-600 font-mono">{item.target}</td>
                               <td className="px-6 py-4 text-center font-bold text-slate-800 font-mono">{item.collected}</td>
-                              <td className="px-6 py-4 text-center font-bold text-slate-900 font-mono">{Math.round((item.collected/item.target)*100)}%</td>
+                              <td className="px-6 py-4 text-center font-bold text-slate-900 font-mono">{Math.round((item.collected / item.target) * 100)}%</td>
                               <td className="px-6 py-4 text-center text-amber-600 font-mono">{item.deferrals}</td>
                               <td className="px-6 py-4 text-center text-rose-600 font-mono">{item.ncu}</td>
                               <td className="px-6 py-4 text-center text-emerald-700 font-mono">{item.ns}</td>
@@ -2744,21 +2803,21 @@ export default function AdminDashboard() {
           <div className="bg-white border border-slate-200 rounded-xl p-6 w-full max-w-sm shadow-xl">
             <h4 className="font-bold text-sm text-slate-900 mb-1 tracking-tight">Pre-Submission Status Action Note</h4>
             <p className="text-xs text-slate-500 mb-4 leading-relaxed">Enter a reference message that will immediately sync to the user's dashboard registry log.</p>
-            <textarea 
-              rows="3" 
-              placeholder="e.g. Attending doctor signature validated. Staging units at SPMC center release desk. Present original form upon collection." 
+            <textarea
+              rows="3"
+              placeholder="e.g. Attending doctor signature validated. Staging units at SPMC center release desk. Present original form upon collection."
               className="w-full border border-slate-200 rounded-lg p-3 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition outline-none resize-none mb-4 bg-slate-50/45"
               value={selectedRequestNote}
               onChange={(e) => setSelectedRequestNote(e.target.value)}
             ></textarea>
             <div className="flex justify-end gap-2.5 text-xs font-semibold">
-              <button 
+              <button
                 onClick={() => setShowNoteModal(false)}
                 className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-650 rounded hover:bg-slate-100 transition-all"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={saveRequestStatusWithNote}
                 className="px-4 py-2 bg-blue-650 text-white rounded hover:bg-blue-700 transition-all shadow-sm"
               >
@@ -2780,11 +2839,11 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Hospital / Centre Name</label>
-                <input type="text" value={hospitalForm.name} onChange={e => setHospitalForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Davao Medical School Foundation" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+                <input type="text" value={hospitalForm.name} onChange={e => setHospitalForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Davao Medical School Foundation" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Type</label>
-                <select value={hospitalForm.type} onChange={e => setHospitalForm(f => ({...f, type: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                <select value={hospitalForm.type} onChange={e => setHospitalForm(f => ({ ...f, type: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
                   <option>Government</option>
                   <option>Private</option>
                   <option>Blood Bank</option>
@@ -2792,19 +2851,19 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Contact Person</label>
-                <input type="text" value={hospitalForm.contact} onChange={e => setHospitalForm(f => ({...f, contact: e.target.value}))} placeholder="Dr. Juan Dela Cruz" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+                <input type="text" value={hospitalForm.contact} onChange={e => setHospitalForm(f => ({ ...f, contact: e.target.value }))} placeholder="Dr. Juan Dela Cruz" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Phone</label>
-                <input type="text" value={hospitalForm.phone} onChange={e => setHospitalForm(f => ({...f, phone: e.target.value}))} placeholder="0917-000-0000" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+                <input type="text" value={hospitalForm.phone} onChange={e => setHospitalForm(f => ({ ...f, phone: e.target.value }))} placeholder="0917-000-0000" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email</label>
-                <input type="email" value={hospitalForm.email} onChange={e => setHospitalForm(f => ({...f, email: e.target.value}))} placeholder="blood@hospital.ph" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+                <input type="email" value={hospitalForm.email} onChange={e => setHospitalForm(f => ({ ...f, email: e.target.value }))} placeholder="blood@hospital.ph" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Registration Status</label>
-                <select value={hospitalForm.registrationStatus} onChange={e => setHospitalForm(f => ({...f, registrationStatus: e.target.value}))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                <select value={hospitalForm.registrationStatus} onChange={e => setHospitalForm(f => ({ ...f, registrationStatus: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
                   <option>Active</option>
                   <option>Pending</option>
                   <option>Suspended</option>
@@ -2812,7 +2871,7 @@ export default function AdminDashboard() {
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Address</label>
-                <input type="text" value={hospitalForm.address} onChange={e => setHospitalForm(f => ({...f, address: e.target.value}))} placeholder="Purok 5, Tigatto, Davao City" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
+                <input type="text" value={hospitalForm.address} onChange={e => setHospitalForm(f => ({ ...f, address: e.target.value }))} placeholder="Purok 5, Tigatto, Davao City" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition bg-slate-50/50" />
               </div>
             </div>
             <div className="flex justify-end gap-2.5 text-xs font-semibold mt-5">
@@ -2827,7 +2886,7 @@ export default function AdminDashboard() {
                   }
                   setShowHospitalModal(false);
                 }}
-                className="px-4 py-2 bg-[#C21C24] text-white rounded hover:bg-[#A8181F] transition-all shadow-sm"
+                className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800 transition-all shadow-sm"
               >
                 {editingHospital ? 'Save Changes' : 'Add Hospital'}
               </button>
@@ -2851,7 +2910,7 @@ export default function AdminDashboard() {
                 <p className="text-xs text-slate-600 leading-relaxed">
                   You are about to release{' '}
                   <span className="font-black text-slate-900">{allocateTarget.units} bags</span> of{' '}
-                  <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[11px] font-mono">{allocateTarget.bloodType}</span>{' '}
+                  <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[11px] font-mono">{allocateTarget.bloodType}</span>{' '}
                   to <span className="font-bold text-slate-900">{allocateTarget.hospitalName}</span>.
                 </p>
                 <p className="text-[10px] text-slate-500 mt-2">This will immediately decrement the inventory and log the distribution. This action cannot be undone.</p>
@@ -2984,8 +3043,8 @@ export default function AdminDashboard() {
                 <div className="bg-purple-50/40 p-3 rounded-lg border border-purple-100/50 space-y-2 animate-in fade-in duration-200">
                   <div>
                     <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider mb-1">Affiliated Hospital / Facility (FK)</label>
-                    <select 
-                      value={addUserForm.hospitalId} 
+                    <select
+                      value={addUserForm.hospitalId}
                       onChange={e => {
                         const targetId = e.target.value;
                         const match = hospitals.find(h => h.id === targetId);
@@ -3002,7 +3061,7 @@ export default function AdminDashboard() {
                         } else {
                           setAddUserForm(f => ({ ...f, hospitalId: '' }));
                         }
-                      }} 
+                      }}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white outline-none focus:border-slate-800"
                     >
                       <option value="">Select hospital...</option>

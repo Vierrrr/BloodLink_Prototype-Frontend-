@@ -85,7 +85,7 @@ export default function RegistryDashboard() {
   // Clinical Screening & Serology Lab outcome state
   const [editingMedicalDonor, setEditingMedicalDonor] = useState(null);
   const [eventSearchQuery, setEventSearchQuery] = useState('');
-  
+
   // Lab Results (Table 8) modal state
   const [showLabResultModal, setShowLabResultModal] = useState(false);
   const [labSaved, setLabSaved] = useState(false);
@@ -326,7 +326,7 @@ export default function RegistryDashboard() {
               <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
               <div>
                 <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-[#C21C24] text-[10px] font-bold">Registry Portal</p>
+                <p className="text-slate-500 text-[10px] font-bold">Registry Portal</p>
               </div>
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function RegistryDashboard() {
             {tab === 'registry' && (
               <button
                 onClick={() => setShowDrawer(true)}
-                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Register Donor
               </button>
@@ -397,7 +397,7 @@ export default function RegistryDashboard() {
               <p className="text-xs font-bold text-slate-900">Registrar Desk</p>
               <p className="text-[10px] text-slate-400">Bajada HQ, Davao City</p>
             </div>
-            <span className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-bold flex items-center justify-center text-xs">
+            <span className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
               RG
             </span>
           </div>
@@ -429,7 +429,7 @@ export default function RegistryDashboard() {
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between min-h-[300px]">
-                <table className="w-full text-left border-collapse text-xs font-semibold text-slate-650">
+                <table className="w-full text-left border-collapse text-xs font-semibold text-slate-655">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
                       <th className="px-6 py-3 font-bold">Donor ID</th>
@@ -453,7 +453,7 @@ export default function RegistryDashboard() {
                             <p className="text-[10px] text-slate-400 font-normal mt-0.5">{donor.phone}</p>
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">
+                            <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">
                               {donor.bloodType}
                             </span>
                           </td>
@@ -489,9 +489,9 @@ export default function RegistryDashboard() {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => setEditingMedicalDonor(donor)}
-                                className="bg-[#C21C24] hover:bg-[#A8181F] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
                               >
-                                <Stethoscope className="w-3 h-3" /> Record Outcomes
+                                <Stethoscope className="w-3.5 h-3.5" /> Record Outcomes
                               </button>
                             </div>
                           </td>
@@ -606,7 +606,7 @@ export default function RegistryDashboard() {
                     checked={isAllSelected}
                     onChange={handleSelectAll}
                     disabled={filteredRecallDonors.length === 0}
-                    className="rounded border-slate-300 text-[#C21C24] focus:ring-[#C21C24] cursor-pointer w-3.5 h-3.5"
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-3.5 h-3.5"
                   />
                   <label htmlFor="selectAll" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
                     Select All
@@ -621,11 +621,10 @@ export default function RegistryDashboard() {
                 <button
                   onClick={handleBulkRecall}
                   disabled={!hasSelection}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                    hasSelection
-                      ? 'bg-[#C21C24] hover:bg-[#A8181F] text-white shadow-md cursor-pointer'
-                      : 'bg-slate-100 text-slate-350 cursor-not-allowed border border-slate-200'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${hasSelection
+                    ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-md cursor-pointer'
+                    : 'bg-slate-100 text-slate-350 cursor-not-allowed border border-slate-200'
+                    }`}
                 >
                   <Droplets className="w-3.5 h-3.5" />
                   Trigger Bulk SMS Recall
@@ -659,14 +658,13 @@ export default function RegistryDashboard() {
                       const isSoon = !isEligible && daysLeft <= 5;
                       const canRecall = isEligible || isSoon;
                       return (
-                        <tr 
-                          key={donor.id} 
+                        <tr
+                          key={donor.id}
                           onClick={() => {
                             if (canRecall) handleSelectOne(donor.id);
                           }}
-                          className={`hover:bg-slate-50/50 transition-colors ${
-                            canRecall ? 'cursor-pointer' : 'opacity-60'
-                          } ${selectedRecallIds.includes(donor.id) ? 'bg-rose-50/30' : ''}`}
+                          className={`hover:bg-slate-50/50 transition-colors ${canRecall ? 'cursor-pointer' : 'opacity-60'
+                            } ${selectedRecallIds.includes(donor.id) ? 'bg-slate-50' : ''}`}
                         >
                           <td className="px-4 py-3.5 text-center w-12" onClick={(e) => e.stopPropagation()}>
                             <input
@@ -676,7 +674,7 @@ export default function RegistryDashboard() {
                                 if (canRecall) handleSelectOne(donor.id);
                               }}
                               disabled={!canRecall}
-                              className="rounded border-slate-300 text-[#C21C24] focus:ring-[#C21C24] cursor-pointer w-3.5 h-3.5"
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-3.5 h-3.5"
                             />
                           </td>
                           <td className="px-6 py-3.5 font-mono font-bold text-slate-400">{donor.id}</td>
@@ -685,7 +683,7 @@ export default function RegistryDashboard() {
                             <p className="text-[10px] text-slate-400 font-normal mt-0.5">{donor.phone}</p>
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[10px] font-mono">
+                            <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono">
                               {donor.bloodType}
                             </span>
                           </td>
@@ -697,13 +695,12 @@ export default function RegistryDashboard() {
                           </td>
                           <td className="px-6 py-3.5">
                             <div className="flex flex-col gap-1">
-                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wide w-fit ${
-                                isEligible
-                                  ? 'bg-emerald-50 border border-emerald-100 text-emerald-700'
-                                  : isSoon
-                                    ? 'bg-orange-50 border border-orange-200 text-orange-700'
-                                    : 'bg-amber-50 border border-amber-100 text-amber-700'
-                              }`}>
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wide w-fit ${isEligible
+                                ? 'bg-emerald-50 border border-emerald-100 text-emerald-700'
+                                : isSoon
+                                  ? 'bg-orange-50 border border-orange-200 text-orange-700'
+                                  : 'bg-amber-50 border border-amber-100 text-amber-700'
+                                }`}>
                                 {new Date(new Date(donor.lastDonation).getTime() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                               {(() => {
@@ -741,13 +738,12 @@ export default function RegistryDashboard() {
                                   handleRecall(donor.id);
                                 }}
                                 disabled={!canRecall}
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors mx-auto ${
-                                  isEligible
-                                    ? 'bg-[#C21C24] hover:bg-[#A8181F] text-white cursor-pointer'
-                                    : isSoon
-                                      ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
-                                      : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                                }`}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors mx-auto ${isEligible
+                                  ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                                  : isSoon
+                                    ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                                  }`}
                               >
                                 <Droplets className="w-3 h-3" /> Recall
                               </button>
@@ -853,10 +849,10 @@ export default function RegistryDashboard() {
               <div className="flex items-center justify-between border-b border-black pb-2 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center font-bold text-[8px] text-center leading-none">
-                    DOH<br/>SEAL
+                    DOH<br />SEAL
                   </div>
                   <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center font-bold text-[8px] text-center leading-none">
-                    SNBC<br/>SEAL
+                    SNBC<br />SEAL
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase">Republic of the Philippines</p>
@@ -867,9 +863,9 @@ export default function RegistryDashboard() {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <div className="text-[8px] font-bold text-right leading-none">
-                    Sleep: _________<br/>
-                    Meal: _________<br/>
-                    Meds: _________<br/>
+                    Sleep: _________<br />
+                    Meal: _________<br />
+                    Meds: _________<br />
                     Allergies: ______
                   </div>
                   <div className="border border-black px-4 py-2 text-[9px] font-bold text-center uppercase tracking-tight">
@@ -915,7 +911,7 @@ export default function RegistryDashboard() {
                     <tr>
                       <td><strong>Middle Name:</strong> <span className="pl-1">{(activeDhqDonor.name || '').split(' ').slice(1, -1).join(' ') || '—'}</span></td>
                       <td colSpan={2}>
-                        <strong>Preferred Mailing Address:</strong><br/>
+                        <strong>Preferred Mailing Address:</strong><br />
                         <span className="inline-block mr-3">[_] Home Address</span> <span>[_] Office Address</span>
                       </td>
                     </tr>
@@ -937,15 +933,15 @@ export default function RegistryDashboard() {
                       <td colSpan={3} className="bg-slate-50">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <strong>Type of Donor:</strong><br/>
+                            <strong>Type of Donor:</strong><br />
                             <span className="mr-3">New to SNBC-M: [_{activeDhqDonor.status === 'New' ? '✓' : ' '}_] YES  [_{activeDhqDonor.status !== 'New' ? '✓' : ' '}_] NO</span>
-                            <span>First time: [_{activeDhqDonor.totalDonations <= 1 ? '✓' : ' '}_] YES  [_{activeDhqDonor.totalDonations > 1 ? '✓' : ' '}_] NO</span><br/>
+                            <span>First time: [_{activeDhqDonor.totalDonations <= 1 ? '✓' : ' '}_] YES  [_{activeDhqDonor.totalDonations > 1 ? '✓' : ' '}_] NO</span><br />
                             <span className="mr-3">Repeat/Retained: [_{activeDhqDonor.totalDonations > 1 ? '✓' : ' '}_] YES  [_{activeDhqDonor.totalDonations <= 1 ? '✓' : ' '}_] NO</span>
                             <span>Lapsed: [_{activeDhqDonor.status === 'Lapsed' ? '✓' : ' '}_] YES  [_{activeDhqDonor.status !== 'Lapsed' ? '✓' : ' '}_] NO</span>
                           </div>
                           <div className="border-l border-slate-350 pl-2">
-                            <strong>No. of times donated:</strong> <span className="font-bold pl-1">{activeDhqDonor.totalDonations || 1}</span><br/>
-                            <strong>Date of last donation:</strong> <span className="font-mono pl-1">{activeDhqDonor.lastDonation || '—'}</span><br/>
+                            <strong>No. of times donated:</strong> <span className="font-bold pl-1">{activeDhqDonor.totalDonations || 1}</span><br />
+                            <strong>Date of last donation:</strong> <span className="font-mono pl-1">{activeDhqDonor.lastDonation || '—'}</span><br />
                             <strong>Venue of last donation:</strong> <span className="pl-1">Davao HQ, Bajada</span>
                           </div>
                         </div>
@@ -962,7 +958,7 @@ export default function RegistryDashboard() {
                   Instructions: THESE QUESTIONS MUST BE ANSWERED CAREFULLY. They protect you and any patients receiving your blood.
                   A "YES" answer may not necessarily exclude you from blood donation. All donors MUST read the donor educational materials provided by the staff before answering.
                 </p>
-                
+
                 <table className="w-full border-collapse snbc-table text-[8.5px]">
                   <thead>
                     <tr className="bg-slate-100">
@@ -1096,7 +1092,7 @@ export default function RegistryDashboard() {
               {/* FOR BLOOD DONOR SCREENING OFFICER USE ONLY */}
               <div className="mt-3 border-2 border-black p-2 bg-slate-50/50">
                 <h3 className="font-black text-[10px] text-center uppercase tracking-wide border-b border-black pb-1 mb-2">FOR BLOOD DONOR SCREENING OFFICER USE ONLY</h3>
-                
+
                 <h4 className="font-bold text-[9px] uppercase mb-1">I-D: PHYSICAL EXAMINATION</h4>
                 <table className="w-full border-collapse snbc-table text-[8.5px] mb-2 bg-white">
                   <tbody>
@@ -1147,7 +1143,7 @@ export default function RegistryDashboard() {
           <div className="print-page flex flex-col justify-between">
             <div>
               <h3 className="font-bold text-[10px] uppercase bg-black text-white px-2 py-0.5 mb-1">II. FOR TECHNICAL MANAGEMENT USE ONLY</h3>
-              
+
               {/* Place Barcode Labels Row */}
               <div className="grid grid-cols-3 gap-2 mb-3 mt-1">
                 <div className="border border-black border-dashed p-4 text-[8px] text-center font-bold uppercase min-h-[50px] flex items-center justify-center">
@@ -1272,7 +1268,7 @@ export default function RegistryDashboard() {
                 <h3 className="font-black text-[9px] uppercase border-b border-black pb-0.5 mb-1.5">I-F: CONFIDENTIAL UNIT EXCLUSION (CUE)</h3>
                 <p className="text-[7.5px] leading-tight mb-3">
                   If at any point during or after your donation, your blood is not suitable for transfusion, please inform the
-                  Sub-National Blood Center - Mindanao Staff. Please use your Blood Donation ID Number and the Segment Number written below in identifying your blood donation.<br/>
+                  Sub-National Blood Center - Mindanao Staff. Please use your Blood Donation ID Number and the Segment Number written below in identifying your blood donation.<br />
                   <strong>Contact Number of Sub-National Blood Center-Mindanao: Cellphone No. 09625998457</strong>
                 </p>
 
@@ -1323,7 +1319,7 @@ export default function RegistryDashboard() {
               <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2 text-xs">
                 <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Donor Name</span><span className="font-bold text-slate-900">{activeDhqDonor.name}</span></div>
                 <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Gender / Age</span><span className="font-bold text-slate-900">{activeDhqDonor.sex || '—'} / {activeDhqDonor.dob || '—'}</span></div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Mobile Phone</span><span className="font-bold text-[#C21C24]">{activeDhqDonor.phone}</span></div>
+                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Mobile Phone</span><span className="font-bold text-slate-900">{activeDhqDonor.phone}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Davao Address</span><span className="font-bold text-slate-900">{activeDhqDonor.address || 'Davao City'}</span></div>
               </div>
 
@@ -1343,11 +1339,10 @@ export default function RegistryDashboard() {
                     return (
                       <div key={i} className="flex items-start justify-between gap-4 p-3 border border-slate-100 rounded-lg bg-white shadow-xs">
                         <span className="text-xs text-slate-700 font-semibold leading-relaxed">{q}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          passed
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            : 'bg-rose-50 text-[#C21C24] border border-rose-100'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${passed
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          : 'bg-rose-50 text-[#C21C24] border border-rose-100'
+                          }`}>
                           {passed ? 'Passed' : 'Declined'}
                         </span>
                       </div>
@@ -1367,7 +1362,7 @@ export default function RegistryDashboard() {
               </button>
               <button
                 onClick={handlePrintDhq}
-                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" /> Print Pre-filled DHQ
               </button>
@@ -1379,12 +1374,12 @@ export default function RegistryDashboard() {
       {/* ── TAB 3: LABORATORY RESULTS (Section II / Table 8) ── */}
       {tab === 'laboratory' && (
         <div className="space-y-5 print:hidden fade-in">
-          
+
           {/* Header block */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
             <div>
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Droplets size={16} className="text-[#C21C24]" />
+                <Droplets size={16} className="text-indigo-600" />
                 Laboratory Test Results — Table 8
               </h3>
               <p className="text-[10px] text-slate-400 mt-0.5">Manage and encode lab-confirmed blood types and serology TTI test outcomes</p>
@@ -1406,7 +1401,7 @@ export default function RegistryDashboard() {
                 setLabSaved(false);
                 setShowLabResultModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#C21C24] hover:bg-[#A8181F] text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
             >
               <Plus size={13} /> Encode Lab Result
             </button>
@@ -1463,11 +1458,10 @@ export default function RegistryDashboard() {
                               ].map((t) => (
                                 <span
                                   key={t.name}
-                                  className={`px-1.5 py-0.5 rounded border ${
-                                    t.val === 'Reactive'
-                                      ? 'bg-rose-50 text-rose-700 border-rose-100'
-                                      : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                  }`}
+                                  className={`px-1.5 py-0.5 rounded border ${t.val === 'Reactive'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                    }`}
                                 >
                                   {t.name}: {t.val}
                                 </span>
@@ -1475,9 +1469,8 @@ export default function RegistryDashboard() {
                             </div>
                           </td>
                           <td className="px-5 py-3.5 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                              hasReactive ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${hasReactive ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
                               {hasReactive ? 'REACTIVE' : 'NON-REACTIVE'}
                             </span>
                           </td>
@@ -1498,7 +1491,7 @@ export default function RegistryDashboard() {
       {showLabResultModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => { setShowLabResultModal(false); setLabSaved(false); }}>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg modal-in" onClick={e => e.stopPropagation()}>
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-white rounded-t-2xl">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registry Staff Module · Table 8: Lab Results</p>
@@ -1559,7 +1552,7 @@ export default function RegistryDashboard() {
                     onChange={e => setLabForm({ ...labForm, bloodTypeConfirmed: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-[#C21C24] outline-none bg-white"
                   >
-                    {['O+','O-','A+','A-','B+','B-','AB+','AB-'].map(t => <option key={t} value={t}>{t}</option>)}
+                    {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
@@ -1593,11 +1586,10 @@ export default function RegistryDashboard() {
                       <select
                         value={labForm[test.key]}
                         onChange={e => setLabForm({ ...labForm, [test.key]: e.target.value })}
-                        className={`w-full border rounded-lg px-3 py-1.5 text-xs outline-none ${
-                          labForm[test.key] === 'Reactive'
-                            ? 'border-rose-200 bg-rose-50 text-rose-700 font-bold'
-                            : 'border-slate-200 bg-white'
-                        }`}
+                        className={`w-full border rounded-lg px-3 py-1.5 text-xs outline-none ${labForm[test.key] === 'Reactive'
+                          ? 'border-rose-200 bg-rose-50 text-rose-700 font-bold'
+                          : 'border-slate-200 bg-white'
+                          }`}
                       >
                         <option value="Non-Reactive">Non-Reactive</option>
                         <option value="Reactive">Reactive</option>
@@ -1626,7 +1618,7 @@ export default function RegistryDashboard() {
                       setShowLabResultModal(false);
                     }, 1200);
                   }}
-                  className="flex-1 px-4 py-2.5 bg-[#C21C24] hover:bg-[#A8181F] text-white rounded-lg transition shadow-sm cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition shadow-sm cursor-pointer"
                 >Encode Result</button>
               </div>
             </div>
@@ -1637,192 +1629,186 @@ export default function RegistryDashboard() {
 
       {/* ── RIGHT SLIDE-IN DRAWER: REGISTER DONOR ── */}
       {/* Backdrop */}
+      {/* ── REGISTER DONOR MODAL POPUP ── */}
       {showDrawer && (
-        <div
-          className="fixed inset-0 z-40 bg-slate-900/30 transition-opacity duration-300 print:hidden"
-          onClick={() => setShowDrawer(false)}
-        />
-      )}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm print:hidden">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col modal-in">
 
-      {/* Drawer Panel */}
-      <div
-        className={`fixed top-0 right-0 h-full w-[420px] bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out print:hidden ${
-          showDrawer ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Drawer Header */}
-        <div className="bg-slate-900 px-6 py-5 flex items-start justify-between flex-shrink-0">
-          <div>
-            <h3 className="text-white font-bold text-sm">Register New Donor</h3>
-            <p className="text-slate-400 text-[10px] mt-0.5">Fill in the donor's complete profile below</p>
+            {/* Modal Header */}
+            <div className="bg-slate-900 px-6 py-5 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-white font-bold text-sm">Register New Donor</h3>
+                <p className="text-slate-400 text-[10px] mt-0.5">Table 5: Donors — Fill in the complete donor profile below</p>
+              </div>
+              <button
+                onClick={() => setShowDrawer(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer hover:bg-slate-800 p-1.5 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleAddSubmit} className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-4">
+
+                {/* Names */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-1">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">First Name <span className="text-rose-500">*</span></label>
+                    <input
+                      required type="text"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                      value={newDonorForm.firstName}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, firstName: e.target.value })}
+                      placeholder="e.g. Juan"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Middle Name</label>
+                    <input
+                      type="text"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                      value={newDonorForm.middleName}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, middleName: e.target.value })}
+                      placeholder="e.g. P."
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Last Name <span className="text-rose-500">*</span></label>
+                    <input
+                      required type="text"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                      value={newDonorForm.lastName}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, lastName: e.target.value })}
+                      placeholder="e.g. Dela Cruz"
+                    />
+                  </div>
+                </div>
+
+                {/* Sex & Civil Status */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Sex <span className="text-rose-500">*</span></label>
+                    <select
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none bg-white cursor-pointer"
+                      value={newDonorForm.sex}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, sex: e.target.value })}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Civil Status <span className="text-rose-500">*</span></label>
+                    <select
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none bg-white cursor-pointer"
+                      value={newDonorForm.civilStatus}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, civilStatus: e.target.value })}
+                    >
+                      {['Single', 'Married', 'Widowed', 'Separated', 'Annulled'].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Date of Birth <span className="text-rose-500">*</span></label>
+                  <input
+                    required type="date"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-slate-600"
+                    value={newDonorForm.dob}
+                    onChange={e => setNewDonorForm({ ...newDonorForm, dob: e.target.value })}
+                  />
+                </div>
+
+                {/* Phone & Email */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Phone Contact <span className="text-rose-500">*</span></label>
+                    <input
+                      required type="tel"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                      value={newDonorForm.phone}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, phone: e.target.value })}
+                      placeholder="+63 9xx xxx xxxx"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email Address</label>
+                    <input
+                      type="email"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                      value={newDonorForm.email}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, email: e.target.value })}
+                      placeholder="e.g. juan@gmail.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Address <span className="text-rose-500">*</span></label>
+                  <input
+                    required type="text"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                    value={newDonorForm.address}
+                    onChange={e => setNewDonorForm({ ...newDonorForm, address: e.target.value })}
+                    placeholder="e.g. Matina, Davao City"
+                  />
+                </div>
+
+                {/* Donor Status & Registration Date */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Donor Status <span className="text-rose-500">*</span></label>
+                    <select
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none bg-white cursor-pointer"
+                      value={newDonorForm.donorStatus}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, donorStatus: e.target.value })}
+                    >
+                      <option value="New">New</option>
+                      <option value="Regular">Regular</option>
+                      <option value="Lapsed">Lapsed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Registration Date <span className="text-rose-500">*</span></label>
+                    <input
+                      required type="date"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none text-slate-600"
+                      value={newDonorForm.registrationDate}
+                      onChange={e => setNewDonorForm({ ...newDonorForm, registrationDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Info note */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-500 leading-relaxed">
+                  <span className="font-bold text-slate-700">Note:</span> The donor is registered directly under Table 5: Donors of the SNBC system database.
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowDrawer(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shadow-sm cursor-pointer"
+                >
+                  Register Donor
+                </button>
+              </div>
+            </form>
           </div>
-          <button
-            onClick={() => setShowDrawer(false)}
-            className="text-slate-400 hover:text-white transition-colors mt-0.5 cursor-pointer hover:bg-slate-800 p-1 rounded"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
-
-        {/* Drawer Body */}
-        <form onSubmit={handleAddSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-4">
-
-            {/* Names (first_name, middle_name, last_name) */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="col-span-1">
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">First Name <span className="text-[#C21C24]">*</span></label>
-                <input
-                  required type="text"
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none"
-                  value={newDonorForm.firstName}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, firstName: e.target.value })}
-                  placeholder="e.g. Juan"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Middle Name</label>
-                <input
-                  type="text"
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none"
-                  value={newDonorForm.middleName}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, middleName: e.target.value })}
-                  placeholder="e.g. P."
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Last Name <span className="text-[#C21C24]">*</span></label>
-                <input
-                  required type="text"
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none"
-                  value={newDonorForm.lastName}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, lastName: e.target.value })}
-                  placeholder="e.g. Dela Cruz"
-                />
-              </div>
-            </div>
-
-            {/* sex & civil_status */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Sex <span className="text-[#C21C24]">*</span></label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none bg-white cursor-pointer"
-                  value={newDonorForm.sex}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, sex: e.target.value })}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Civil Status <span className="text-[#C21C24]">*</span></label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none bg-white cursor-pointer"
-                  value={newDonorForm.civilStatus}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, civilStatus: e.target.value })}
-                >
-                  {['Single','Married','Widowed','Separated','Annulled'].map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* birth_date (dob) */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Date of Birth <span className="text-[#C21C24]">*</span></label>
-              <input
-                required type="date"
-                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none text-slate-600"
-                value={newDonorForm.dob}
-                onChange={e => setNewDonorForm({ ...newDonorForm, dob: e.target.value })}
-              />
-            </div>
-
-            {/* contact_number (phone) & email */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Phone / Contact <span className="text-[#C21C24]">*</span></label>
-                <input
-                  required type="tel"
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none"
-                  value={newDonorForm.phone}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, phone: e.target.value })}
-                  placeholder="+63 9xx xxx xxxx"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none"
-                  value={newDonorForm.email}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, email: e.target.value })}
-                  placeholder="e.g. juan@gmail.com"
-                />
-              </div>
-            </div>
-
-            {/* address */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Address / Barangay <span className="text-[#C21C24]">*</span></label>
-              <input
-                required type="text"
-                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none"
-                value={newDonorForm.address}
-                onChange={e => setNewDonorForm({ ...newDonorForm, address: e.target.value })}
-                placeholder="e.g. Matina, Davao City"
-              />
-            </div>
-
-            {/* donor_status & registration_date */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Donor Status <span className="text-[#C21C24]">*</span></label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none bg-white cursor-pointer"
-                  value={newDonorForm.donorStatus}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, donorStatus: e.target.value })}
-                >
-                  <option value="New">New</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Lapsed">Lapsed</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Registration Date <span className="text-[#C21C24]">*</span></label>
-                <input
-                  required type="date"
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#C21C24] outline-none text-slate-600"
-                  value={newDonorForm.registrationDate}
-                  onChange={e => setNewDonorForm({ ...newDonorForm, registrationDate: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Info note */}
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-500 leading-relaxed">
-              <span className="font-bold text-slate-700">Note:</span> The donor is registered directly under Table 5: Donors of the SNBC system database.
-            </div>
-          </div>
-
-          {/* Drawer Footer */}
-          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowDrawer(false)}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            >
-              Register Donor
-            </button>
-          </div>
-        </form>
-      </div>
+      )}
 
       {/* ── ONSITE SCREENING OUTCOMES MODAL ── */}
       {editingMedicalDonor && (
@@ -1832,7 +1818,7 @@ export default function RegistryDashboard() {
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <Stethoscope className="w-4 h-4 text-[#C21C24]" />
+                  <Stethoscope className="w-4 h-4 text-indigo-600" />
                   <h3 className="font-bold text-slate-900 text-sm">Record Onsite Screening Outcome</h3>
                 </div>
                 <p className="text-[10px] text-slate-400 font-semibold">
@@ -1912,11 +1898,10 @@ export default function RegistryDashboard() {
                               barangayOrganization: ev.barangayOrganization || ''
                             }));
                           }}
-                          className={`w-full text-left p-3 text-xs flex justify-between items-center transition-all ${
-                            isSelected
-                              ? 'bg-red-50/70 border-l-4 border-red-600 text-red-900 font-semibold'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
+                          className={`w-full text-left p-3 text-xs flex justify-between items-center transition-all ${isSelected
+                            ? 'bg-red-50/70 border-l-4 border-red-600 text-red-900 font-semibold'
+                            : 'hover:bg-slate-50 text-slate-700'
+                            }`}
                         >
                           <div>
                             <div className="font-bold flex items-center gap-1.5">
@@ -1929,9 +1914,8 @@ export default function RegistryDashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold font-mono ${
-                              isSelected ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-650'
-                            }`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold font-mono ${isSelected ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-650'
+                              }`}>
                               {ev.eventDate}
                             </span>
                           </div>
@@ -1971,21 +1955,21 @@ export default function RegistryDashboard() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Screening Outcome</label>
-                    <select value={medicalForm.screeningOutcome} onChange={e => setMedicalForm({...medicalForm, screeningOutcome: e.target.value})}
+                    <select value={medicalForm.screeningOutcome} onChange={e => setMedicalForm({ ...medicalForm, screeningOutcome: e.target.value })}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
-                      {['Accepted','Temporarily Deferred','Permanently Deferred','Indefinite Deferral'].map(v => <option key={v} value={v}>{v}</option>)}
+                      {['Accepted', 'Temporarily Deferred', 'Permanently Deferred', 'Indefinite Deferral'].map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                   {medicalForm.screeningOutcome !== 'Accepted' && (
                     <>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Deferral Reason</label>
-                        <input type="text" value={medicalForm.deferralReason} onChange={e => setMedicalForm({...medicalForm, deferralReason: e.target.value})}
+                        <input type="text" value={medicalForm.deferralReason} onChange={e => setMedicalForm({ ...medicalForm, deferralReason: e.target.value })}
                           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" placeholder="e.g. Low Hemoglobin" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Deferral End Date</label>
-                        <input type="date" value={medicalForm.deferralEndDate} onChange={e => setMedicalForm({...medicalForm, deferralEndDate: e.target.value})}
+                        <input type="date" value={medicalForm.deferralEndDate} onChange={e => setMedicalForm({ ...medicalForm, deferralEndDate: e.target.value })}
                           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" />
                       </div>
                     </>
