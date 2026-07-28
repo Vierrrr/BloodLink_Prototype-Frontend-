@@ -77,7 +77,7 @@ const initialRequests = [
     dateNeeded: '2026-06-20',
     contactPerson: 'Dr. Juan Dela Cruz, MD',
     contactNumber: '+63 917 000 0001',
-    status: 'Pending',
+    status: 'Pending Verification',
     submittedAt: 'June 19, 2026, 9:30 AM',
     notes: 'Urgent release needed for cardiac surgery.',
     diagnosis: 'Open Heart Surgery',
@@ -1002,6 +1002,45 @@ export const useBloodStore = create(
         });
       },
 
+      updateUser: (userId, updatedFields) => {
+        const now = new Date();
+        set((state) => {
+          const roleMap = { 'Super Admin': 'ROLE-001', 'Administrator': 'ROLE-002', 'Registry Staff': 'ROLE-003', 'Blood Bank Staff': 'ROLE-004', 'Issuance Personnel': 'ROLE-005', 'Hospital User': 'ROLE-006' };
+          const updatedUsers = state.users.map(u => {
+            if (u.id !== userId) return u;
+            const firstName = updatedFields.firstName ?? u.firstName;
+            const lastName = updatedFields.lastName ?? u.lastName;
+            const role = updatedFields.role ?? u.role;
+            return {
+              ...u,
+              firstName,
+              lastName,
+              name: `${firstName} ${lastName}`.trim(),
+              email: updatedFields.email ?? u.email,
+              contactNumber: updatedFields.contactNumber ?? u.contactNumber,
+              role,
+              roleId: roleMap[role] ?? u.roleId,
+              status: updatedFields.status ?? u.status,
+              updatedAt: now.toLocaleString(),
+            };
+          });
+          const targetUser = updatedUsers.find(u => u.id === userId);
+          return {
+            users: updatedUsers,
+            auditLogs: [{
+              logId: 'LOG-' + Math.floor(100 + Math.random() * 900),
+              userId: state.authSystemUser?.id || 'USR-001',
+              action: `Updated system user ${targetUser?.name} (${targetUser?.role})`,
+              module: 'User Management',
+              recordId: userId,
+              oldValue: null,
+              newValue: JSON.stringify({ role: targetUser?.role, email: targetUser?.email, status: targetUser?.status }),
+              performedAt: now.toLocaleString()
+            }, ...state.auditLogs]
+          };
+        });
+      },
+
       // ─── Blood Requests ─────────────────────────────────────────────────
       addBloodRequest: (reqForm) => {
         const refNo = 'REQ-' + Math.floor(1000 + Math.random() * 9000);
@@ -1017,14 +1056,16 @@ export const useBloodStore = create(
           dateNeeded: reqForm.dateNeeded || '',
           contactPerson: reqForm.contactPerson || '',
           contactNumber: reqForm.contactNumber || '',
-          status: 'Pending',
+          status: reqForm.filedByIssuance ? 'Verified' : 'Pending Verification',
           submittedAt: dateString,
           diagnosis: reqForm.diagnosis || '',
           ward: reqForm.ward || '',
           notes: reqForm.notes || '',
           hospitalRefNo: reqForm.hospitalRefNo || '',
           statusNote: '',
-          items: reqForm.items || [] // Array of { bloodType, component, units }
+          items: reqForm.items || [], // Array of { bloodType, component, units }
+          filedByIssuance: reqForm.filedByIssuance || false, // true if filed by Issuance Personnel
+          filedBy: reqForm.filedBy || null, // name of the issuance officer who filed it
         };
         set((state) => ({ bloodRequests: [newRequest, ...state.bloodRequests] }));
         return refNo;
@@ -1044,21 +1085,56 @@ export const useBloodStore = create(
         }));
       },
 
+      verifyRequest: (refNo) => {
+        set((state) => {
+          const req = state.bloodRequests.find(r => r.refNo === refNo);
+          if (!req) return state;
+
+          const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
+          const newAuditLog = {
+            logId: auditLogId,
+            userId: state.authSystemUser?.id || 'USR-005',
+            action: `Verified Request ${refNo} for ${req.hospital} (Sent to Blood Bank)`,
+            module: 'Issuance',
+            recordId: refNo,
+            oldValue: 'Pending Verification',
+            newValue: 'Verified',
+            performedAt: new Date().toLocaleString()
+          };
+
+          return {
+            bloodRequests: state.bloodRequests.map(r => r.refNo === refNo ? { ...r, status: 'Verified' } : r),
+            auditLogs: [newAuditLog, ...state.auditLogs]
+          };
+        });
+      },
+
       approveRequest: (refNo) => {
         set((state) => {
           const req = state.bloodRequests.find(r => r.refNo === refNo);
           if (!req) return state;
           
-          const targetType = req.patientBloodType || req.bloodType;
-          // Find matching available units in bloodInventory
-          const matchedUnits = state.bloodInventory
-            .filter(u => u.bloodTypeId === targetType && u.inventoryStatus === 'Available')
-            .slice(0, req.units);
+          const items = req.items && req.items.length > 0
+            ? req.items
+            : (req.patientBloodType
+                ? [{ bloodType: req.patientBloodType, component: req.component || 'PRBC', units: req.units || 1 }]
+                : []);
 
-          // Update inventory status of matched units to 'Issued'
-          const updatedBloodInventory = state.bloodInventory.map(u => {
-            const isMatched = matchedUnits.some(mu => mu.unitId === u.unitId);
-            return isMatched ? { ...u, inventoryStatus: 'Issued' } : u;
+          let updatedBloodInventory = [...state.bloodInventory];
+          let totalIssuedCount = 0;
+
+          // Match inventory units for each requested item
+          items.forEach(item => {
+            const matchable = updatedBloodInventory
+              .filter(u => u.bloodType === item.bloodType && u.component === item.component && u.inventoryStatus === 'Available')
+              .slice(0, item.units);
+
+            totalIssuedCount += matchable.length;
+
+            updatedBloodInventory = updatedBloodInventory.map(u => {
+              const isMatched = matchable.some(mu => mu.unitId === u.unitId);
+              return isMatched ? { ...u, inventoryStatus: 'Issued' } : u;
+            });
           });
 
           // Generate issuance transaction (Table 12)
@@ -1069,11 +1145,12 @@ export const useBloodStore = create(
             hospitalId: req.hospitalId || 'HOSP-001',
             processedBy: state.authSystemUser?.id || 'USR-005',
             issuanceDate: new Date().toISOString(),
-            remarks: 'Approved and issued to hospital ward'
+            remarks: 'Issued and dispatched by Blood Bank'
           };
 
           // Generate issuance details (Table 13)
-          const newIssuanceDetails = matchedUnits.map(mu => ({
+          const matchedUnitsForDetails = updatedBloodInventory.filter(u => u.inventoryStatus === 'Issued' && !state.bloodIssuanceDetails.some(d => d.unitId === u.unitId));
+          const newIssuanceDetails = matchedUnitsForDetails.map(mu => ({
             detailId: 'DET-' + Math.floor(1000 + Math.random() * 9000),
             issuanceId,
             unitId: mu.unitId,
@@ -1082,8 +1159,9 @@ export const useBloodStore = create(
 
           // Decrement aggregate inventory
           const newInventory = state.inventory.map(item => {
-            if (item.type === targetType) {
-              const newUnits = Math.max(0, item.units - req.units);
+            const matchReq = items.find(i => i.bloodType === item.type);
+            if (matchReq) {
+              const newUnits = Math.max(0, item.units - matchReq.units);
               const status = newUnits < item.threshold ? 'critical' : newUnits === item.threshold ? 'low' : 'safe';
               return { ...item, units: newUnits, status };
             }
@@ -1095,16 +1173,16 @@ export const useBloodStore = create(
           const newAuditLog = {
             logId: auditLogId,
             userId: state.authSystemUser?.id || 'USR-005',
-            action: `Approved Blood Request ${refNo} (Issued ${matchedUnits.length} bags to ${req.hospital})`,
+            action: `Dispatched Blood Request ${refNo} (Issued ${totalIssuedCount} units to ${req.hospital})`,
             module: 'Issuance',
             recordId: refNo,
-            oldValue: 'Pending',
-            newValue: 'Approved',
+            oldValue: 'Verified',
+            newValue: 'Issued',
             performedAt: new Date().toLocaleString()
           };
 
           return {
-            bloodRequests: state.bloodRequests.map(r => r.refNo === refNo ? { ...r, status: 'Approved' } : r),
+            bloodRequests: state.bloodRequests.map(r => r.refNo === refNo ? { ...r, status: 'Issued' } : r),
             bloodInventory: updatedBloodInventory,
             bloodIssuance: [newIssuance, ...state.bloodIssuance],
             bloodIssuanceDetails: [...newIssuanceDetails, ...state.bloodIssuanceDetails],
@@ -1116,16 +1194,18 @@ export const useBloodStore = create(
 
       recordBloodUnit: (unitForm) => {
         set((state) => {
-          // Auto-generate unitId as an auto-increment integer ID
-          const existingIds = state.bloodInventory.map(u => {
-            const numeric = parseInt(String(u.unitId).replace(/\D/g, ''), 10);
-            return isNaN(numeric) ? 0 : numeric;
-          });
-          const nextNum = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-          const nextUnitId = nextNum; // Plain Auto Increment Integer
+          let assignedUnitId = (unitForm.unitId || unitForm.unitRefId || '').trim();
+          if (!assignedUnitId) {
+            const existingIds = state.bloodInventory.map(u => {
+              const numeric = parseInt(String(u.unitId).replace(/\D/g, ''), 10);
+              return isNaN(numeric) ? 0 : numeric;
+            });
+            const nextNum = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+            assignedUnitId = `BU-2026-${String(nextNum).padStart(3, '0')}`;
+          }
 
           const newUnit = {
-            unitId: nextUnitId,
+            unitId: assignedUnitId,
             donationId: unitForm.donationId || ('DON-' + Math.floor(100 + Math.random() * 900)),
             bloodTypeId: unitForm.bloodType || 'O+',
             componentId: unitForm.component || 'PRBC',

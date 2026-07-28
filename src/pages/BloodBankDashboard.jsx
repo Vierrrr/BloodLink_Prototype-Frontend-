@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useBloodStore } from '../store/useBloodStore';
 import {
   Archive, Stethoscope, LogOut,
-  CheckCircle, XCircle, Droplets, Clock, Activity, AlertTriangle, Database, FileText, Plus, X
+  CheckCircle, XCircle, Droplets, Clock, Activity, AlertTriangle, Database, FileText, Plus, X, Tag
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -13,6 +13,7 @@ const SAFETY_STATUSES = ['Cleared', 'Hold-Quarantined', 'NCU', 'NS', 'Discarded'
 const INTENDED_USES = ['Transfusable', 'Storage-Research Only', 'Restricted'];
 
 const emptyUnitForm = {
+  unitId: '',
   unitRefId: '',
   donationId: '',
   bloodType: 'O+',
@@ -32,6 +33,8 @@ export default function BloodBankDashboard() {
   const [unitForm, setUnitForm] = useState(emptyUnitForm);
   const [unitSaved, setUnitSaved] = useState(false);
   const [donationSearch, setDonationSearch] = useState('');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
 
   const handleUnitSubmit = (e) => {
     e.preventDefault();
@@ -40,9 +43,18 @@ export default function BloodBankDashboard() {
     setTimeout(() => { setUnitSaved(false); setUnitForm(emptyUnitForm); setShowUnitForm(false); setDonationSearch(''); }, 2000);
   };
 
-  // Filter requests that are still Pending
-  const pendingRequests = bloodRequests.filter(req => req.status === 'Pending');
-  const pastRequests = bloodRequests.filter(req => req.status !== 'Pending');
+  const handleIssue = (refNo) => {
+    approveRequest(refNo);
+    setSuccessModal({
+      isOpen: true,
+      title: 'Blood Units Dispatched!',
+      message: `Requisition ${refNo} has been successfully completed. Physical blood bags were matched, labeled as Issued, and subtracted from active inventory.`
+    });
+  };
+
+  // Filter requests that are Verified (ready for Blood Bank processing)
+  const pendingRequests = bloodRequests.filter(req => req.status === 'Verified');
+  const pastRequests = bloodRequests.filter(req => req.status === 'Issued' || req.status === 'Approved' || req.status === 'Rejected');
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
@@ -65,7 +77,7 @@ export default function BloodBankDashboard() {
           <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
             <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
             <p className="text-slate-800 font-bold text-xs">Blood Bank Staff</p>
-            <p className="text-slate-500 text-[10px] font-medium">Inventory & Issuance</p>
+            <p className="text-slate-500 text-[10px] font-medium">Inventory Management</p>
           </div>
 
           {/* Sidebar Nav Links */}
@@ -105,7 +117,7 @@ export default function BloodBankDashboard() {
       </aside>
 
       {/* CONTENT AREA */}
-      <div className="content-area flex flex-col flex-1 min-h-screen bg-slate-50">
+      <div className="content-area flex flex-col flex-1 h-screen bg-slate-50">
 
         {/* Top Header Bar */}
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
@@ -163,106 +175,182 @@ export default function BloodBankDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {inventory.map((item) => (
-                        <tr key={item.type} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-3.5">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200 text-[10px] font-mono shadow-sm">
-                              {item.type}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-sm text-slate-800">
-                            {item.units}
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
-                            {item.platelets || 0}
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
-                            {item.ffp || 0}
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
-                            {item.cryo || 0}
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
-                            {item.cryosup || 0}
-                          </td>
-                          <td className="px-6 py-3.5 text-center border-l border-slate-100">
-                            {item.status === 'safe' && <span className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Safe</span>}
-                            {item.status === 'low' && <span className="bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><Activity className="w-3 h-3" /> Low</span>}
-                            {item.status === 'critical' && <span className="bg-rose-50 border border-rose-100 text-[#C21C24] px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Critical</span>}
-                          </td>
-                        </tr>
-                      ))}
+                      {inventory.map((item) => {
+                        const isSelected = selectedTypeFilter === item.type;
+                        return (
+                          <tr
+                            key={item.type}
+                            onClick={() => setSelectedTypeFilter(isSelected ? 'All' : item.type)}
+                            className={`cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-rose-50/80 font-bold border-l-4 border-[#C21C24]'
+                                : 'hover:bg-slate-50/70'
+                            }`}
+                            title={`Click to filter Table 9 for ${item.type} blood bags`}
+                          >
+                            <td className="px-6 py-3.5 flex items-center gap-2">
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold border text-[10px] font-mono shadow-2xs ${
+                                isSelected
+                                  ? 'bg-[#C21C24] text-white border-[#C21C24]'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {item.type}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[9px] bg-rose-100 text-rose-800 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  Filtering
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-sm text-slate-800">
+                              {item.units}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
+                              {item.platelets || 0}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
+                              {item.ffp || 0}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
+                              {item.cryo || 0}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100 font-bold text-slate-600">
+                              {item.cryosup || 0}
+                            </td>
+                            <td className="px-6 py-3.5 text-center border-l border-slate-100">
+                              {item.status === 'safe' && <span className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Safe</span>}
+                              {item.status === 'low' && <span className="bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><Activity className="w-3 h-3" /> Low</span>}
+                              {item.status === 'critical' && <span className="bg-rose-50 border border-rose-100 text-[#C21C24] px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Critical</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               {/* PHYSICAL BLOOD BAG REGISTRY (Table 9) */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500">
-                    <Database className="w-4 h-4 text-indigo-600" /> Physical Blood Bag Registry (Table 9)
-                  </h3>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">
-                    Total: {bloodInventory ? bloodInventory.length : 0} bags
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs font-semibold text-slate-650">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
-                        <th className="px-5 py-3 font-bold">Unit ID</th>
-                        <th className="px-5 py-3 font-bold">Donation ID</th>
-                        <th className="px-5 py-3 font-bold text-center">Type</th>
-                        <th className="px-5 py-3 font-bold">Component</th>
-                        <th className="px-5 py-3 font-bold text-center">Collected</th>
-                        <th className="px-5 py-3 font-bold text-center">Expiry</th>
-                        <th className="px-5 py-3 font-bold text-center">Qty (mL)</th>
-                        <th className="px-5 py-3 font-bold text-center">Safety</th>
-                        <th className="px-5 py-3 font-bold">Intended Use</th>
-                        <th className="px-5 py-3 font-bold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-normal">
-                      {(bloodInventory || []).map(unit => (
-                        <tr key={unit.unitId} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-3 font-mono font-bold text-slate-900">{unit.unitId}</td>
-                          <td className="px-5 py-3 font-mono text-slate-400 text-[10px]">{unit.donationId}</td>
-                          <td className="px-5 py-3 text-center">
-                            <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono shadow-sm">
-                              {unit.bloodTypeId}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 font-bold text-slate-700">{unit.componentId}</td>
-                          <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.collectionDate || '—'}</td>
-                          <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.expirationDate}</td>
-                          <td className="px-5 py-3 text-center font-bold text-slate-800">{unit.quantity} mL</td>
-                          <td className="px-5 py-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              unit.safetyStatus === 'Cleared' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                              unit.safetyStatus === 'Hold-Quarantined' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                              'bg-rose-50 text-rose-700 border border-rose-100'
-                            }`}>
-                              {unit.safetyStatus}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 font-medium text-slate-600">{unit.intendedUse}</td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              unit.inventoryStatus === 'Available' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                              unit.inventoryStatus === 'Issued' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                              unit.inventoryStatus === 'Expired' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
-                              'bg-slate-100 text-slate-600'
-                            }`}>
-                              {unit.inventoryStatus}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {(() => {
+                const filteredInventory = (bloodInventory || []).filter(unit => {
+                  if (selectedTypeFilter === 'All') return true;
+                  return unit.bloodTypeId === selectedTypeFilter;
+                });
+
+                return (
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500">
+                          <Database className="w-4 h-4 text-indigo-600" /> Physical Blood Bag Registry (Table 9)
+                        </h3>
+                        {selectedTypeFilter !== 'All' && (
+                          <span className="text-[10px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                            Filtered by {selectedTypeFilter}
+                            <button
+                              onClick={() => setSelectedTypeFilter('All')}
+                              className="hover:text-rose-900 font-extrabold ml-1 cursor-pointer"
+                              title="Clear filter"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-bold mr-1">Filter Type:</span>
+                        {['All', ...BLOOD_TYPES].map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setSelectedTypeFilter(type)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition-colors cursor-pointer ${
+                              selectedTypeFilter === type
+                                ? 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                        <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded ml-2">
+                          Total: {filteredInventory.length} bags
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs font-semibold text-slate-650">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-400">
+                            <th className="px-5 py-3 font-bold">Physical Bag Serial / Unit ID</th>
+                            <th className="px-5 py-3 font-bold">Donation ID</th>
+                            <th className="px-5 py-3 font-bold text-center">Type</th>
+                            <th className="px-5 py-3 font-bold">Component</th>
+                            <th className="px-5 py-3 font-bold text-center">Collected</th>
+                            <th className="px-5 py-3 font-bold text-center">Expiry</th>
+                            <th className="px-5 py-3 font-bold text-center">Qty (mL)</th>
+                            <th className="px-5 py-3 font-bold text-center">Safety</th>
+                            <th className="px-5 py-3 font-bold">Intended Use</th>
+                            <th className="px-5 py-3 font-bold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-normal">
+                          {filteredInventory.map(unit => (
+                            <tr key={unit.unitId} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-5 py-3 font-mono font-bold text-slate-900">
+                                <div className="flex items-center gap-1.5">
+                                  <Tag className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                  <span className="bg-indigo-50 text-indigo-950 border border-indigo-100 px-2 py-0.5 rounded text-[11px] font-mono shadow-2xs">
+                                    {unit.unitId}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3 font-mono text-slate-400 text-[10px]">{unit.donationId}</td>
+                              <td className="px-5 py-3 text-center">
+                                <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-[10px] font-mono shadow-sm">
+                                  {unit.bloodTypeId}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 font-bold text-slate-700">{unit.componentId}</td>
+                              <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.collectionDate || '—'}</td>
+                              <td className="px-5 py-3 text-center font-mono text-[10px]">{unit.expirationDate}</td>
+                              <td className="px-5 py-3 text-center font-bold text-slate-800">{unit.quantity} mL</td>
+                              <td className="px-5 py-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  unit.safetyStatus === 'Cleared' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  unit.safetyStatus === 'Hold-Quarantined' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                  'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>
+                                  {unit.safetyStatus}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 font-medium text-slate-600">{unit.intendedUse}</td>
+                              <td className="px-5 py-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  unit.inventoryStatus === 'Available' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                  unit.inventoryStatus === 'Issued' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  unit.inventoryStatus === 'Expired' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                                  'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {unit.inventoryStatus}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {filteredInventory.length === 0 && (
+                            <tr>
+                              <td colSpan={10} className="px-5 py-8 text-center text-slate-400 text-xs font-normal">
+                                No physical blood bags found matching blood type <strong>{selectedTypeFilter}</strong>.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -313,13 +401,13 @@ export default function BloodBankDashboard() {
                             <p className="font-semibold text-slate-800">{req.contactPerson}</p>
                             <p className="text-[10px] text-slate-400 mt-0.5">{req.contactNumber}</p>
                           </td>
-                          <td className="px-6 py-3.5">
+                           <td className="px-6 py-3.5">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => approveRequest(req.refNo)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-1 cursor-pointer"
+                                onClick={() => handleIssue(req.refNo)}
+                                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-1 cursor-pointer"
                               >
-                                <CheckCircle className="w-3.5 h-3.5" /> Approve
+                                <CheckCircle className="w-3.5 h-3.5" /> Issue Blood
                               </button>
                               <button
                                 onClick={() => rejectRequest(req.refNo)}
@@ -334,7 +422,7 @@ export default function BloodBankDashboard() {
                       {pendingRequests.length === 0 && (
                         <tr>
                           <td colSpan="6" className="px-6 py-8 text-center text-slate-450 font-normal">
-                            No pending blood requests at this time.
+                            No verified blood requests pending bank dispatch.
                           </td>
                         </tr>
                       )}
@@ -364,7 +452,7 @@ export default function BloodBankDashboard() {
                             <td className="px-6 py-3.5 font-bold text-slate-900">{req.hospital}</td>
                             <td className="px-6 py-3.5 text-center font-bold text-slate-800">{req.units}x {req.patientBloodType || req.bloodType}</td>
                             <td className="px-6 py-3.5">
-                              {req.status === 'Approved' ? (
+                              {req.status === 'Issued' || req.status === 'Approved' ? (
                                 <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Issued</span>
                               ) : (
                                 <span className="text-[#C21C24] bg-rose-50 border border-rose-100 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1"><XCircle className="w-3 h-3" /> Rejected</span>
@@ -402,6 +490,23 @@ export default function BloodBankDashboard() {
             </div>
 
             <form onSubmit={handleUnitSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+
+              {/* Physical Bag Sticker Serial / Barcode Number */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-indigo-600" /> Physical Bag Barcode / Serial Sticker No.
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BAG-DVO-2026-001 (Leave blank for auto-generated ID)"
+                  value={unitForm.unitId}
+                  onChange={e => setUnitForm({ ...unitForm, unitId: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none font-mono bg-slate-50/50"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">
+                  Type or scan the physical barcode sticker label attached to this specific blood bag.
+                </p>
+              </div>
 
               {/* Row 1: Link Donation ID / Donor (Full Width) */}
               <div>
@@ -556,6 +661,33 @@ export default function BloodBankDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SUCCESS MODAL ─── */}
+      {successModal.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm p-6 text-center transform transition-all duration-300 scale-100 flex flex-col items-center">
+            {/* Animated Check Circle Icon */}
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-inner mb-4 animate-bounce">
+              <CheckCircle className="w-10 h-10 text-emerald-600" />
+            </div>
+            
+            <h3 className="font-extrabold text-slate-900 text-lg tracking-tight mb-2">
+              {successModal.title}
+            </h3>
+            
+            <p className="text-xs text-slate-500 leading-relaxed px-2 mb-6">
+              {successModal.message}
+            </p>
+            
+            <button
+              onClick={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+              className="w-full bg-[#C21C24] hover:bg-[#A8181F] text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+            >
+              Great, thank you!
+            </button>
           </div>
         </div>
       )}

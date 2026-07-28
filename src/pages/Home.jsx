@@ -593,7 +593,7 @@ export default function Home() {
                   <li>Admin: <code className="font-mono text-rose-600">admin@bloodlink.dvo</code></li>
                   <li>Registry Staff: <code className="font-mono text-rose-600">registry@bloodlink.dvo</code></li>
                   <li>Blood Bank Staff: <code className="font-mono text-rose-600">bloodbank@bloodlink.dvo</code></li>
-                  <li>Issuance Staff: <code className="font-mono text-rose-600">issuance@bloodlink.dvo</code></li>
+                  <li>Issuance Personnel: <code className="font-mono text-rose-600">issuance@bloodlink.dvo</code></li>
                   <li>Hospital Desk: <code className="font-mono text-rose-600">hospital@bloodlink.dvo</code> (SPMC)</li>
                 </ul>
               </div>

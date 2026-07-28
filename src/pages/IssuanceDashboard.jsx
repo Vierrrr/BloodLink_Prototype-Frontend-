@@ -37,6 +37,7 @@ export default function IssuanceDashboard() {
     hospitals, 
     addBloodRequest, 
     approveRequest, 
+    verifyRequest,
     rejectRequest, 
     authSystemUser,
     bloodIssuance,
@@ -78,22 +79,47 @@ export default function IssuanceDashboard() {
   const myHospital = hospitals?.find(h => h.id === hospitalId);
   const hospitalName = myHospital?.name || 'Unknown Hospital';
 
-  const [showForm,    setShowForm]    = useState(false);
-  const [form,        setForm]        = useState({ ...emptyForm });
-  const [cartItems,   setCartItems]   = useState([]);
-  const [cartItem,    setCartItem]    = useState({ ...emptyCartItem });
-  const [cartError,   setCartError]   = useState('');
-  const [submitted,   setSubmitted]   = useState(null);
-  const [viewingReq,  setViewingReq]  = useState(null);
-  const [rejectNote,  setRejectNote]  = useState('');
-  const [activeTab,   setActiveTab]   = useState('queue');
-  const [detailMode,  setDetailMode]  = useState('reject'); // 'reject' | 'view'
+  const [showForm,           setShowForm]           = useState(false);
+  const [form,               setForm]               = useState({ ...emptyForm });
+  const [cartItems,          setCartItems]          = useState([]);
+  const [cartItem,           setCartItem]           = useState({ ...emptyCartItem });
+  const [cartError,          setCartError]          = useState('');
+  const [submitted,          setSubmitted]          = useState(null);
+  const [viewingReq,         setViewingReq]         = useState(null);
+  const [rejectNote,         setRejectNote]         = useState('');
+  const [activeTab,          setActiveTab]          = useState('queue');
+  const [detailMode,         setDetailMode]         = useState('reject'); // 'reject' | 'view'
+  const [selectedHospitalId, setSelectedHospitalId] = useState('');
+  const [queueFilter,        setQueueFilter]        = useState('all'); // 'all' | 'mine'
+  const [successModal,       setSuccessModal]       = useState({ isOpen: false, title: '', message: '' });
+
+  // Forecast Records table — independent filters
+  const [recHospital, setRecHospital] = useState('ALL');
+  const [recBloodType, setRecBloodType] = useState('ALL');
+  const [recComponent, setRecComponent] = useState('ALL');
+  const [recSearch, setRecSearch] = useState('');
 
   const myRequests   = isHospitalUser
     ? bloodRequests.filter(r => r.hospitalId === hospitalId)
     : bloodRequests;
-  const pendingCount  = myRequests.filter(r => r.status === 'Pending').length;
-  const approvedCount = myRequests.filter(r => r.status === 'Approved').length;
+
+  // For issuance staff: filteredQueue supports 'all' vs 'mine' (filed by this staff)
+  const filteredQueue = isIssuanceStaff && queueFilter === 'mine'
+    ? myRequests.filter(r => r.filedByIssuance === true)
+    : myRequests;
+
+  const handleVerify = (refNo) => {
+    verifyRequest(refNo);
+    setSuccessModal({
+      isOpen: true,
+      title: 'Requisition Verified!',
+      message: `Blood Request ${refNo} has been successfully verified and sent to the Blood Bank for physical bag allocation & dispatch.`
+    });
+  };
+
+  const pendingCount  = myRequests.filter(r => r.status === 'Pending Verification' || r.status === 'Pending').length;
+  const verifiedCount = myRequests.filter(r => r.status === 'Verified').length;
+  const approvedCount = myRequests.filter(r => r.status === 'Issued' || r.status === 'Approved').length;
   const getInv = (type) => inventory.find(i => i.type === type);
 
   const handleFormChange = (e) => {
@@ -131,11 +157,21 @@ export default function IssuanceDashboard() {
       setCartError('Please add at least one blood component to the requisition.');
       return;
     }
+    // For issuance staff filing on behalf of a hospital, use the selected hospital
+    let submittingHospitalId = hospitalId;
+    let submittingHospitalName = hospitalName;
+    if (isIssuanceStaff) {
+      const selHosp = hospitals?.find(h => h.id === selectedHospitalId);
+      submittingHospitalId = selHosp?.id || 'HOSP-001';
+      submittingHospitalName = selHosp?.name || 'Unknown Hospital';
+    }
     const refNo = addBloodRequest({
       ...form,
-      hospital: hospitalName,
-      hospitalId,
+      hospital: submittingHospitalName,
+      hospitalId: submittingHospitalId,
       items: cartItems,
+      filedByIssuance: isIssuanceStaff, // tag so we can filter 'mine'
+      filedBy: authSystemUser?.name || 'Issuance Personnel',
     });
     setSubmitted(refNo);
     setShowForm(false);
@@ -143,6 +179,16 @@ export default function IssuanceDashboard() {
     setCartItems([]);
     setCartItem({ ...emptyCartItem });
     setCartError('');
+    setSelectedHospitalId('');
+
+    // Trigger Success Modal
+    setSuccessModal({
+      isOpen: true,
+      title: isIssuanceStaff ? 'Requisition Filed!' : 'Request Submitted!',
+      message: isIssuanceStaff 
+        ? `Blood Requisition ${refNo} has been successfully filed on behalf of ${submittingHospitalName} and is marked as Verified (ready for Blood Bank).`
+        : `Your blood requisition ${refNo} has been successfully submitted and is awaiting verification by the Issuance Personnel.`
+    });
   };
 
   const openNewForm = () => {
@@ -172,9 +218,13 @@ export default function IssuanceDashboard() {
   };
 
   const statusConfig = {
-    Pending:  { icon: <Clock className="w-3 h-3" />,        cls: 'bg-amber-50 text-amber-700 border-amber-100' },
-    Approved: { icon: <CheckCircle className="w-3 h-3" />,  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-    Rejected: { icon: <XCircle className="w-3 h-3" />,      cls: 'bg-rose-50 text-[#C21C24] border-rose-100' },
+    'Pending Verification': { icon: <Clock className="w-3 h-3" />,        cls: 'bg-amber-50 text-amber-700 border-amber-100' },
+    'Verified':             { icon: <Shield className="w-3 h-3" />,       cls: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+    'Issued':               { icon: <CheckCircle className="w-3 h-3" />,  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+    'Rejected':             { icon: <XCircle className="w-3 h-3" />,      cls: 'bg-rose-50 text-[#C21C24] border-rose-100' },
+    // Backwards compatibility legacy mapping:
+    'Pending':              { icon: <Clock className="w-3 h-3" />,        cls: 'bg-amber-50 text-amber-700 border-amber-100' },
+    'Approved':             { icon: <CheckCircle className="w-3 h-3" />,  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
   };
 
   const componentColor = (comp) => {
@@ -260,7 +310,7 @@ export default function IssuanceDashboard() {
       </aside>
 
       {/* CONTENT AREA */}
-      <div className="content-area flex flex-col flex-1 min-h-screen bg-slate-50">
+      <div className="content-area flex flex-col flex-1 h-screen bg-slate-50">
 
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
           <div>
@@ -272,9 +322,9 @@ export default function IssuanceDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {isHospitalUser && (
+            {(isHospitalUser || isIssuanceStaff) && (
               <button onClick={openNewForm}
-                className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
+                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
                 <Plus className="w-3.5 h-3.5" /> New Blood Request
               </button>
             )}
@@ -313,17 +363,27 @@ export default function IssuanceDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Total Requests',    val: myRequests.length,  color: 'bg-slate-900 text-white' },
-              { label: 'Pending Review',    val: pendingCount,       color: 'bg-amber-500 text-white' },
-              { label: 'Approved & Issued', val: approvedCount,      color: 'bg-emerald-600 text-white' },
-            ].map((s, i) => (
-              <div key={i} className={`${s.color} rounded-xl p-5 shadow-sm`}>
-                <p className="text-3xl font-extrabold">{s.val}</p>
-                <p className="text-xs font-semibold opacity-80 uppercase tracking-wider mt-1">{s.label}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Total Requests</p>
+              <p className="text-2xl font-extrabold text-slate-900 font-mono">{myRequests.length}</p>
+              <p className="text-[10px] text-slate-450 mt-1 font-semibold">All submitted requests</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Pending Review</p>
+              <p className="text-2xl font-extrabold text-amber-500 font-mono">{pendingCount}</p>
+              <p className="text-[10px] text-slate-450 mt-1 font-semibold">Awaiting issuance action</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Verified (Wait Bank)</p>
+              <p className="text-2xl font-extrabold text-indigo-600 font-mono">{verifiedCount}</p>
+              <p className="text-[10px] text-slate-450 mt-1 font-semibold">Confirmed, awaiting dispatch</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Dispatched & Issued</p>
+              <p className="text-2xl font-extrabold text-emerald-600 font-mono">{approvedCount}</p>
+              <p className="text-[10px] text-slate-450 mt-1 font-semibold">Fulfilled by blood bank</p>
+            </div>
           </div>
 
           {activeTab === 'queue' && (
@@ -333,9 +393,31 @@ export default function IssuanceDashboard() {
                   <Droplets className="w-4 h-4 text-[#C21C24]" />
                   {isHospitalUser ? 'My Blood Requests' : 'Hospital Issuance Queue'}
                 </h3>
-                {isIssuanceStaff && pendingCount > 0 && (
-                  <span className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded">{pendingCount} pending</span>
-                )}
+                <div className="flex items-center gap-3">
+                  {isIssuanceStaff && (
+                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                      <button onClick={() => setQueueFilter('all')}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                          queueFilter === 'all'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}>
+                        All Requests
+                      </button>
+                      <button onClick={() => setQueueFilter('mine')}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                          queueFilter === 'mine'
+                            ? 'bg-[#C21C24] text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}>
+                        Filed by Me
+                      </button>
+                    </div>
+                  )}
+                  {isIssuanceStaff && pendingCount > 0 && (
+                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded">{pendingCount} pending</span>
+                  )}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs font-semibold text-slate-650">
@@ -346,12 +428,13 @@ export default function IssuanceDashboard() {
                       <th className="px-6 py-3 font-bold">Requisition Items</th>
                       <th className="px-6 py-3 font-bold text-center">Urgency</th>
                       <th className="px-6 py-3 font-bold">Submitted</th>
+                      {isIssuanceStaff && <th className="px-6 py-3 font-bold text-center">Source</th>}
                       <th className="px-6 py-3 font-bold text-center">Status</th>
                       <th className="px-6 py-3 font-bold text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {myRequests.map(req => {
+                    {filteredQueue.map(req => {
                       const urgency = urgencyConfig[req.urgency] || urgencyConfig.routine;
                       const status  = statusConfig[req.status]   || statusConfig.Pending;
                       const items   = req.items || [];
@@ -386,6 +469,14 @@ export default function IssuanceDashboard() {
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${urgency.cls}`}>{urgency.label}</span>
                           </td>
                           <td className="px-6 py-3.5 font-mono font-normal text-slate-500">{req.submittedAt}</td>
+                          {isIssuanceStaff && (
+                            <td className="px-6 py-3.5 text-center">
+                              {req.filedByIssuance
+                                ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-100"><Shield className="w-2.5 h-2.5" /> Issuance</span>
+                                : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100">Hospital</span>
+                              }
+                            </td>
+                          )}
                           <td className="px-6 py-3.5 text-center">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${status.cls}`}>{status.icon} {req.status}</span>
                           </td>
@@ -396,27 +487,31 @@ export default function IssuanceDashboard() {
                                 className="text-slate-500 hover:bg-slate-100 p-1.5 rounded-lg transition-colors" title="View Details">
                                 <Eye className="w-4 h-4" />
                               </button>
-                              {/* Approve / Reject - issuance staff only */}
-                              {isIssuanceStaff && req.status === 'Pending' && (
+                              {/* Verify / Reject - issuance staff only, for pending hospital-submitted requests */}
+                              {isIssuanceStaff && (req.status === 'Pending Verification' || req.status === 'Pending') && !req.filedByIssuance && (
                                 <>
-                                  <button onClick={() => approveRequest(req.refNo)} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors" title="Approve">
-                                    <CheckCircle className="w-4 h-4" />
+                                  <button onClick={() => handleVerify(req.refNo)} className="text-[#C21C24] hover:bg-rose-50 p-1.5 rounded-lg transition-colors font-bold flex items-center gap-0.5" title="Verify & Send to Bank">
+                                    <CheckCircle className="w-4 h-4 text-indigo-650" /> <span className="text-[10px] text-indigo-700">Verify</span>
                                   </button>
                                   <button onClick={() => openReject(req)} className="text-[#C21C24] hover:bg-rose-50 p-1.5 rounded-lg transition-colors" title="Reject">
                                     <XCircle className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
-                              {isIssuanceStaff && req.status !== 'Pending' && (
-                                <span className="text-slate-300 text-[10px]">—</span>
+                              {isIssuanceStaff && ((req.status !== 'Pending Verification' && req.status !== 'Pending') || req.filedByIssuance) && (
+                                <span className="text-slate-400 text-[10px] font-semibold">
+                                  {req.status === 'Verified' ? 'Sent to Bank' : req.status}
+                                </span>
                               )}
                             </div>
                           </td>
                         </tr>
                       );
                     })}
-                    {myRequests.length === 0 && (
-                      <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400 font-normal">No blood requests found.</td></tr>
+                    {filteredQueue.length === 0 && (
+                      <tr><td colSpan={isIssuanceStaff ? 8 : 7} className="px-6 py-8 text-center text-slate-400 font-normal">
+                        {queueFilter === 'mine' ? 'No requests filed by you yet.' : 'No blood requests found.'}
+                      </td></tr>
                     )}
                   </tbody>
                 </table>
@@ -766,7 +861,7 @@ export default function IssuanceDashboard() {
                             const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
                             const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
                             return (
-                              <button key={bt} onClick={() => setFcBloodType(bt)}
+                              <button key={bt} onClick={() => { setFcBloodType(bt); setRecBloodType(bt); }}
                                 className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-[#C21C24] hover:bg-rose-50 transition cursor-pointer group">
                                 <span className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-black text-[11px] flex items-center justify-center group-hover:bg-[#C21C24] group-hover:text-white transition font-mono">{bt}</span>
                                 <span className="font-extrabold text-slate-900 text-sm">{total.toFixed(0)}</span>
@@ -793,7 +888,7 @@ export default function IssuanceDashboard() {
                             const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
                             const barW = allTotal ? (total / allTotal) * 100 : 0;
                             return (
-                              <button key={hosp.id} onClick={() => setFcHospital(hosp.id)}
+                              <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
                                 className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
                                 <div className="w-36 flex-shrink-0">
                                   <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
@@ -816,66 +911,131 @@ export default function IssuanceDashboard() {
                       </div>
                     )}
 
-                    {/* Detailed Table */}
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Granular Forecast Results</h4>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {isOverview ? 'Showing top 20 records by predicted demand' : `${filtered.length} matching predictions`}
-                          </p>
+                    {/* Forecast Records Table — with independent inline filters */}
+                    {(() => {
+                      const recFiltered = gf.filter(f =>
+                        f.weeksAhead === 1 &&
+                        (recHospital === 'ALL' || f.hospitalId === recHospital) &&
+                        (recBloodType === 'ALL' || f.bloodTypeId === recBloodType) &&
+                        (recComponent === 'ALL' || f.componentId === recComponent) &&
+                        (!recSearch || [
+                          f.forecastId,
+                          hospitals?.find(h => h.id === f.hospitalId)?.name || '',
+                          f.bloodTypeId,
+                          f.componentId
+                        ].some(v => v.toLowerCase().includes(recSearch.toLowerCase())))
+                      );
+                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recSearch !== '';
+                      const displayRows = [...(recIsFiltered ? recFiltered : gf.filter(f => f.weeksAhead === 1))].sort((a, b) => b.predictedDemand - a.predictedDemand);
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                          {/* Table header + inline filters */}
+                          <div className="px-6 py-4 border-b border-slate-100">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                                  Granular Component Breakdown (Next Week) {recIsFiltered && <span className="text-slate-650">(Filtered)</span>}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {recIsFiltered
+                                    ? `${displayRows.length} component record${displayRows.length !== 1 ? 's' : ''} matching filter — per blood type & component`
+                                    : `${displayRows.length} records · Breaks down the summary charts above into exact PRBC, FFP, Platelet & Cryo units per hospital`
+                                  }
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {recIsFiltered && (
+                                  <button
+                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecSearch(''); }}
+                                    className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition"
+                                  >↩ Clear</button>
+                                )}
+                                <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
+                              </div>
+                            </div>
+                            {/* Inline filter row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hospital</label>
+                                <select value={recHospital} onChange={e => setRecHospital(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Hospitals</option>
+                                  {(hospitals || []).map(h => <option key={h.id} value={h.id}>{h.name.split('(')[0].trim()}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type</label>
+                                <select value={recBloodType} onChange={e => setRecBloodType(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Blood Types</option>
+                                  {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Component</label>
+                                <select value={recComponent} onChange={e => setRecComponent(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                                  <option value="ALL">All Components</option>
+                                  {COMPONENTS.map(c => <option key={c}>{c}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search</label>
+                                <input
+                                  type="text"
+                                  value={recSearch}
+                                  onChange={e => setRecSearch(e.target.value)}
+                                  placeholder="ID, hospital, type…"
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-xs">
+                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                  <th className="px-5 py-3 text-left">Forecast ID</th>
+                                  {recHospital === 'ALL' && <th className="px-5 py-3 text-left">Hospital</th>}
+                                  <th className="px-5 py-3 text-left">Blood Type</th>
+                                  <th className="px-5 py-3 text-left">Component</th>
+                                  <th className="px-5 py-3 text-right">Predicted Demand (Next Week)</th>
+                                  <th className="px-5 py-3 text-center">Confidence</th>
+                                  <th className="px-5 py-3 text-center">Trend</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                {displayRows.length === 0 ? (
+                                  <tr><td colSpan={recHospital === 'ALL' ? 7 : 6} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
+                                ) : displayRows.map(f => (
+                                  <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
+                                    {recHospital === 'ALL' && <td className="px-5 py-2.5 text-slate-800 font-bold">{(hospitals || []).find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim() || f.hospitalName}</td>}
+                                    <td className="px-5 py-2.5">
+                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] border border-slate-200 font-mono">{f.bloodTypeId}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5">
+                                      <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 text-right font-mono font-bold text-slate-900">
+                                      <span className="text-base font-black text-indigo-600 font-mono">{f.predictedDemand.toFixed(1)}</span>
+                                      <span className="text-[10px] text-slate-400 ml-1">bags</span>
+                                    </td>
+                                    <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound.toFixed(0)}–{f.upperBound.toFixed(0)}</td>
+                                    <td className="px-5 py-2.5 text-center">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                          f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                            'bg-slate-50 border-slate-200 text-slate-500'
+                                        }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-xs">
-                          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            <tr>
-                              <th className="px-5 py-3 text-left">Forecast ID</th>
-                              <th className="px-5 py-3 text-left">Hospital</th>
-                              <th className="px-5 py-3 text-center">Blood Type</th>
-                              <th className="px-5 py-3 text-left">Component</th>
-                              <th className="px-5 py-3 text-center">Week</th>
-                              <th className="px-5 py-3 text-right">Predicted Demand</th>
-                              <th className="px-5 py-3 text-center">Confidence</th>
-                              <th className="px-5 py-3 text-center">Trend</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                            {(isOverview
-                              ? [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand).slice(0, 20)
-                              : filtered
-                            ).map(f => (
-                              <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-5 py-2.5 font-mono text-[10px] text-slate-400">{f.forecastId}</td>
-                                <td className="px-5 py-2.5 font-bold text-slate-800 text-[11px]">
-                                  {(hospitals || []).find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim() || f.hospitalName}
-                                </td>
-                                <td className="px-5 py-2.5 text-center">
-                                  <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 text-[#C21C24] font-black rounded text-[9px] font-mono">{f.bloodTypeId}</span>
-                                </td>
-                                <td className="px-5 py-2.5 text-slate-600 text-[11px]">{f.componentId}</td>
-                                <td className="px-5 py-2.5 text-center font-mono text-[10px] text-slate-500">{f.forecastWeekLabel}</td>
-                                <td className="px-5 py-2.5 text-right font-mono font-bold text-slate-900">
-                                  {f.predictedDemand.toFixed(1)}
-                                  <span className="text-[9px] text-slate-400 ml-1">bags</span>
-                                </td>
-                                <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">
-                                  {f.lowerBound.toFixed(0)}–{f.upperBound.toFixed(0)}
-                                </td>
-                                <td className="px-5 py-2.5 text-center">
-                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                    f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                    f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                    'bg-slate-50 border-slate-200 text-slate-500'
-                                  }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -885,13 +1045,15 @@ export default function IssuanceDashboard() {
         </main>
       </div>
 
-      {/* ─── NEW REQUEST MODAL (Hospital User) ─── */}
-      {showForm && isHospitalUser && (
+      {/* ─── NEW REQUEST MODAL (Hospital User OR Issuance Personnel) ─── */}
+      {showForm && (isHospitalUser || isIssuanceStaff) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
             <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="text-white font-bold text-sm">New Blood Requisition</h3>
+                <h3 className="text-white font-bold text-sm">
+                  {isIssuanceStaff ? 'File Blood Requisition (On Behalf of Hospital)' : 'New Blood Requisition'}
+                </h3>
                 <p className="text-slate-400 text-[10px] mt-0.5">Logistics-only — no patient-identifiable data (RA 10173)</p>
               </div>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg cursor-pointer">
@@ -899,15 +1061,36 @@ export default function IssuanceDashboard() {
               </button>
             </div>
 
-            {/* Auto-assigned Hospital Banner */}
-            <div className="px-6 py-3 bg-rose-50 border-b border-rose-100 flex items-center gap-3 flex-shrink-0">
-              <Shield className="w-4 h-4 text-[#C21C24] flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Requesting Hospital (Auto-detected from session)</p>
-                <p className="text-sm font-bold text-slate-900 leading-tight">{hospitalName}</p>
-                <p className="text-[10px] text-slate-400 font-mono">{hospitalId}</p>
+            {/* Hospital Banner — auto-detected for Hospital User, selectable for Issuance Personnel */}
+            {isHospitalUser && (
+              <div className="px-6 py-3 bg-rose-50 border-b border-rose-100 flex items-center gap-3 flex-shrink-0">
+                <Shield className="w-4 h-4 text-[#C21C24] flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Requesting Hospital (Auto-detected from session)</p>
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{hospitalName}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{hospitalId}</p>
+                </div>
               </div>
-            </div>
+            )}
+            {isIssuanceStaff && (
+              <div className="px-6 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center gap-4 flex-shrink-0">
+                <Shield className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-[10px] text-indigo-600 uppercase font-bold tracking-wider mb-1">Select Hospital (Filing on behalf of)</p>
+                  <select
+                    required
+                    value={selectedHospitalId}
+                    onChange={e => setSelectedHospitalId(e.target.value)}
+                    className="w-full border border-indigo-200 rounded-lg p-2 text-xs font-semibold bg-white focus:ring-2 focus:ring-indigo-400 outline-none"
+                  >
+                    <option value="">— Select requesting hospital —</option>
+                    {(hospitals || []).map(h => (
+                      <option key={h.id} value={h.id}>{h.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
               <div className="p-6 space-y-5">
@@ -1262,6 +1445,33 @@ export default function IssuanceDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SUCCESS MODAL ─── */}
+      {successModal.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm p-6 text-center transform transition-all duration-300 scale-100 flex flex-col items-center">
+            {/* Animated Check Circle Icon */}
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-inner mb-4 animate-bounce">
+              <CheckCircle className="w-10 h-10 text-emerald-600" />
+            </div>
+            
+            <h3 className="font-extrabold text-slate-900 text-lg tracking-tight mb-2">
+              {successModal.title}
+            </h3>
+            
+            <p className="text-xs text-slate-500 leading-relaxed px-2 mb-6">
+              {successModal.message}
+            </p>
+            
+            <button
+              onClick={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+              className="w-full bg-[#C21C24] hover:bg-[#A8181F] text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+            >
+              Great, thank you!
+            </button>
           </div>
         </div>
       )}

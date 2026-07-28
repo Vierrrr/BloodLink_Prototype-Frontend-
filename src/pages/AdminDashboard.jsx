@@ -32,10 +32,13 @@ import {
   Lock,
   ChevronRight,
   LogOut,
-  Calendar
+  Calendar,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
+const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
 
 export default function AdminDashboard() {
   // Zustand State
@@ -63,6 +66,9 @@ export default function AdminDashboard() {
   const generateGranularForecast = useBloodStore((state) => state.generateGranularForecast);
   const granularForecasts = useBloodStore((state) => state.granularForecasts) ?? [];
   const addUser = useBloodStore((state) => state.addUser);
+  const updateUser = useBloodStore((state) => state.updateUser);
+  const addBloodRequest = useBloodStore((state) => state.addBloodRequest);
+  const approveRequest = useBloodStore((state) => state.approveRequest);
   const recommendations = useBloodStore((state) => state.recommendations);
   const donorRecalls = useBloodStore((state) => state.donorRecalls) ?? [];
   const dispatchRecallSMS = useBloodStore((state) => state.dispatchRecallSMS);
@@ -160,6 +166,26 @@ export default function AdminDashboard() {
     status: 'Active', hospitalId: ''
   });
   const [userSaved, setUserSaved] = useState(false);
+  // Edit User modal
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({ firstName: '', lastName: '', email: '', contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003', status: 'Active' });
+  const [editUserSaved, setEditUserSaved] = useState(false);
+
+  // Direct Create Issuance Modal State
+  const [showCreateIssuanceModal, setShowCreateIssuanceModal] = useState(false);
+  const [createIssuanceForm, setCreateIssuanceForm] = useState({
+    hospitalId: '',
+    bloodType: 'O+',
+    component: 'PRBC',
+    units: 1,
+    urgency: 'routine',
+    ward: '',
+    diagnosis: '',
+    contactPerson: '',
+    contactNumber: ''
+  });
+  const [issuanceSuccessModal, setIssuanceSuccessModal] = useState({ isOpen: false, refNo: '', hospital: '', units: 0, bloodType: '', component: '' });
 
   // Map References
   const mobMapRef = useRef(null);
@@ -571,7 +597,7 @@ export default function AdminDashboard() {
               <span>Hospital Management</span>
             </button>
 
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Capstone Elements</p>
+            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Distribution</p>
 
             <button onClick={() => setTab('forecasting')} className={`w-full text-left nav-link ${tab === 'forecasting' ? 'active' : ''}`}>
               <Activity className="nav-icon" />
@@ -1159,8 +1185,23 @@ export default function AdminDashboard() {
                             {(isSuperAdmin || isAdministrator) && (
                               <td className="px-6 py-4">
                                 {canEdit ? (
-                                  <button className="text-[10px] font-bold text-slate-500 hover:text-slate-800 border border-slate-200 px-2 py-0.5 rounded hover:bg-slate-50 transition-colors">
-                                    Edit
+                                  <button
+                                    onClick={() => {
+                                      setEditingUser(u);
+                                      setEditUserForm({
+                                        firstName: u.firstName || u.name?.split(' ')[0] || '',
+                                        lastName: u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
+                                        email: u.email || '',
+                                        contactNumber: u.contactNumber || '',
+                                        role: u.role || 'Registry Staff',
+                                        roleId: u.roleId || 'ROLE-003',
+                                        status: u.status || 'Active',
+                                      });
+                                      setShowEditUserModal(true);
+                                    }}
+                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    ✎ Edit
                                   </button>
                                 ) : (
                                   <span className="text-[10px] text-slate-300">Protected</span>
@@ -1417,7 +1458,20 @@ export default function AdminDashboard() {
                     <h3 className="font-bold text-slate-900 text-sm tracking-tight">Hospital Blood Issuance Ledger</h3>
                     <p className="text-xs text-slate-400 mt-0.5">Blood bags released to partner hospitals and blood centres</p>
                   </div>
-                  <button className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm">
+                  <button onClick={() => {
+                    setCreateIssuanceForm({
+                      hospitalId: hospitals[0]?.id || '',
+                      bloodType: 'O+',
+                      component: 'PRBC',
+                      units: 1,
+                      urgency: 'routine',
+                      ward: '',
+                      diagnosis: '',
+                      contactPerson: '',
+                      contactNumber: ''
+                    });
+                    setShowCreateIssuanceModal(true);
+                  }} className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm cursor-pointer">
                     <Plus className="w-4 h-4" /> Create Issuance
                   </button>
                 </div>
@@ -1578,8 +1632,6 @@ export default function AdminDashboard() {
 
           {/* TAB: DEMAND FORECASTING – OVERVIEW + DRILL-DOWN */}
           {tab === 'forecasting' && (() => {
-            const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
-            const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
             // Safety guard — persist middleware may return undefined for new fields
             const gf = Array.isArray(granularForecasts) ? granularForecasts : [];
 
@@ -1862,7 +1914,7 @@ export default function AdminDashboard() {
                             const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
                             const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
                             return (
-                              <button key={bt} onClick={() => setFcBloodType(bt)}
+                              <button key={bt} onClick={() => { setFcBloodType(bt); setRecBloodType(bt); }}
                                 className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition cursor-pointer group">
                                 <span className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition font-mono">{bt}</span>
                                 <span className="font-extrabold text-slate-900 text-sm">{total}</span>
@@ -1889,7 +1941,7 @@ export default function AdminDashboard() {
                             const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
                             const barW = allTotal ? (total / allTotal) * 100 : 0;
                             return (
-                              <button key={hosp.id} onClick={() => setFcHospital(hosp.id)}
+                              <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
                                 className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group">
                                 <div className="w-36 flex-shrink-0">
                                   <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-600 transition">{hosp.name.split('(')[0].trim()}</p>
@@ -1915,22 +1967,19 @@ export default function AdminDashboard() {
                     {/* Forecast Records Table — with independent inline filters */}
                     {(() => {
                       const recFiltered = gf.filter(f =>
+                        f.weeksAhead === 1 &&
                         (recHospital === 'ALL' || f.hospitalId === recHospital) &&
                         (recBloodType === 'ALL' || f.bloodTypeId === recBloodType) &&
                         (recComponent === 'ALL' || f.componentId === recComponent) &&
-                        (recWeek === 'ALL' || f.forecastWeekLabel === recWeek) &&
                         (!recSearch || [
                           f.forecastId,
                           hospitals.find(h => h.id === f.hospitalId)?.name || '',
                           f.bloodTypeId,
-                          f.componentId,
-                          f.forecastWeekLabel
+                          f.componentId
                         ].some(v => v.toLowerCase().includes(recSearch.toLowerCase())))
                       );
-                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recWeek !== 'ALL' || recSearch !== '';
-                      const displayRows = recIsFiltered
-                        ? recFiltered
-                        : [...gf].sort((a, b) => b.predictedDemand - a.predictedDemand);
+                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recSearch !== '';
+                      const displayRows = [...(recIsFiltered ? recFiltered : gf.filter(f => f.weeksAhead === 1))].sort((a, b) => b.predictedDemand - a.predictedDemand);
                       return (
                         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                           {/* Table header + inline filters */}
@@ -1938,19 +1987,19 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between mb-3">
                               <div>
                                 <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                                  Forecast Records {recIsFiltered && <span className="text-slate-600">(Filtered)</span>}
+                                  Granular Component Breakdown (Next Week) {recIsFiltered && <span className="text-slate-650">(Filtered)</span>}
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-0.5">
                                   {recIsFiltered
-                                    ? `${displayRows.length} record${displayRows.length !== 1 ? 's' : ''} matching filter`
-                                    : `All ${displayRows.length} records sorted by predicted demand`
+                                    ? `${displayRows.length} component record${displayRows.length !== 1 ? 's' : ''} matching filter — per blood type & component`
+                                    : `${displayRows.length} records · Breaks down the summary charts above into exact PRBC, FFP, Platelet & Cryo units per hospital`
                                   }
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {recIsFiltered && (
                                   <button
-                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecWeek('ALL'); setRecSearch(''); }}
+                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecSearch(''); }}
                                     className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition"
                                   >↩ Clear</button>
                                 )}
@@ -1958,7 +2007,7 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                             {/* Inline filter row */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                               <div>
                                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hospital</label>
                                 <select value={recHospital} onChange={e => setRecHospital(e.target.value)}
@@ -1984,14 +2033,6 @@ export default function AdminDashboard() {
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Forecast Week</label>
-                                <select value={recWeek} onChange={e => setRecWeek(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Weeks</option>
-                                  {[...new Set(gf.map(f => f.forecastWeekLabel))].sort().map(wk => <option key={wk} value={wk}>{wk}</option>)}
-                                </select>
-                              </div>
-                              <div>
                                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search</label>
                                 <input
                                   type="text"
@@ -2008,29 +2049,27 @@ export default function AdminDashboard() {
                               <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 <tr>
                                   <th className="px-5 py-3 text-left">Forecast ID</th>
-                                  <th className="px-5 py-3 text-left">Hospital</th>
+                                  {recHospital === 'ALL' && <th className="px-5 py-3 text-left">Hospital</th>}
                                   <th className="px-5 py-3 text-left">Blood Type</th>
                                   <th className="px-5 py-3 text-left">Component</th>
-                                  <th className="px-5 py-3 text-left">Forecast Week</th>
-                                  <th className="px-5 py-3 text-right">Predicted Demand</th>
+                                  <th className="px-5 py-3 text-right">Predicted Demand (Next Week)</th>
                                   <th className="px-5 py-3 text-center">Confidence</th>
                                   <th className="px-5 py-3 text-center">Trend</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                                 {displayRows.length === 0 ? (
-                                  <tr><td colSpan={8} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
+                                  <tr><td colSpan={recHospital === 'ALL' ? 7 : 6} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
                                 ) : displayRows.map(f => (
                                   <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
-                                    <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>
+                                    {recHospital === 'ALL' && <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>}
                                     <td className="px-5 py-2.5">
                                       <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] border border-slate-200 font-mono">{f.bloodTypeId}</span>
                                     </td>
                                     <td className="px-5 py-2.5">
                                       <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
                                     </td>
-                                    <td className="px-5 py-2.5 font-mono text-slate-500">{f.forecastWeek} <span className="text-[9px] text-slate-400">({f.forecastWeekLabel})</span></td>
                                     <td className="px-5 py-2.5 text-right">
                                       <span className="text-base font-black text-indigo-600 font-mono">{f.predictedDemand}</span>
                                       <span className="text-[10px] text-slate-400 ml-1">units</span>
@@ -3114,6 +3153,115 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* EDIT SYSTEM USER MODAL */}
+      {showEditUserModal && editingUser && (isSuperAdmin || isAdministrator) && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => { setShowEditUserModal(false); setEditUserSaved(false); setEditingUser(null); }}>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg modal-in" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white rounded-t-2xl flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrative Tool · Table 2: Users</p>
+                <h4 className="font-bold text-slate-900 text-sm tracking-tight">Edit System User — {editingUser.id}</h4>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${editingUser.role === 'Super Admin' ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>{editingUser.role}</span>
+            </div>
+            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+              {editUserSaved && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-2.5 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2">
+                  <span className="text-lg">✓</span> User updated successfully!
+                </div>
+              )}
+
+              {/* Name */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">First Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={editUserForm.firstName} onChange={e => setEditUserForm(f => ({ ...f, firstName: e.target.value }))} placeholder="e.g. Jane" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Last Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={editUserForm.lastName} onChange={e => setEditUserForm(f => ({ ...f, lastName: e.target.value }))} placeholder="e.g. Doe" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Email Address <span className="text-rose-500">*</span></label>
+                <input type="email" value={editUserForm.email} onChange={e => setEditUserForm(f => ({ ...f, email: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+              </div>
+
+              {/* Contact */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Contact Number</label>
+                <input type="text" value={editUserForm.contactNumber} onChange={e => setEditUserForm(f => ({ ...f, contactNumber: e.target.value }))} placeholder="e.g. +63 917 123 4567" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
+              </div>
+
+              {/* Role */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Assigned Role <span className="text-rose-500">*</span></label>
+                  <select
+                    value={editUserForm.role}
+                    onChange={e => {
+                      const roleMap = { 'Super Admin': 'ROLE-001', 'Administrator': 'ROLE-002', 'Registry Staff': 'ROLE-003', 'Blood Bank Staff': 'ROLE-004', 'Issuance Personnel': 'ROLE-005', 'Hospital User': 'ROLE-006' };
+                      setEditUserForm(f => ({ ...f, role: e.target.value, roleId: roleMap[e.target.value] || 'ROLE-003' }));
+                    }}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800"
+                    disabled={editingUser.role === 'Super Admin' && !isSuperAdmin}
+                  >
+                    <option>Registry Staff</option>
+                    <option>Blood Bank Staff</option>
+                    <option>Issuance Personnel</option>
+                    <option>Hospital User</option>
+                    <option>Administrator</option>
+                    {isSuperAdmin && <option>Super Admin</option>}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Role ID (FK)</label>
+                  <input type="text" value={editUserForm.roleId} readOnly className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-100 text-slate-500 outline-none font-mono" />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Account Status</label>
+                <select value={editUserForm.status} onChange={e => setEditUserForm(f => ({ ...f, status: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800">
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+                <p className="text-[9px] text-slate-400 mt-0.5">ENUM('Active','Inactive') — updated_at auto-recorded</p>
+              </div>
+
+              {/* Metadata note */}
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                <p className="text-[9px] text-amber-700 font-semibold"><span className="font-bold">Audit:</span> This change will be logged in the Audit Log with the performing admin's user_id and a timestamp.</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2.5 text-xs font-semibold pt-2">
+                <button
+                  onClick={() => { setShowEditUserModal(false); setEditUserSaved(false); setEditingUser(null); }}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                >Cancel</button>
+                <button
+                  onClick={() => {
+                    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) return alert('First name, last name, and email are required.');
+                    updateUser(editingUser.id, editUserForm);
+                    setEditUserSaved(true);
+                    setTimeout(() => {
+                      setEditUserSaved(false);
+                      setShowEditUserModal(false);
+                      setEditingUser(null);
+                    }, 1400);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm cursor-pointer"
+                >Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── ADD DONATION EVENT MODAL — Table 6: Donation Events ─────────── */}
       {showEventModal && (
         <div
@@ -3229,6 +3377,212 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── DIRECT MANUAL ISSUANCE MODAL ─── */}
+      {showCreateIssuanceModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col modal-in">
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-white font-bold text-sm">Direct Blood Unit Issuance (Admin Override)</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Directly issue blood units bypassing the requisition queue verification</p>
+              </div>
+              <button onClick={() => setShowCreateIssuanceModal(false)} className="text-slate-400 hover:text-white transition cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-4 text-xs font-semibold text-slate-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Target Hospital <span className="text-rose-500">*</span></label>
+                  <select
+                    value={createIssuanceForm.hospitalId}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, hospitalId: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  >
+                    {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Urgency Status <span className="text-rose-500">*</span></label>
+                  <select
+                    value={createIssuanceForm.urgency}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, urgency: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  >
+                    <option value="routine">Routine</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="emergency">Emergency</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Blood Type <span className="text-rose-500">*</span></label>
+                  <select
+                    value={createIssuanceForm.bloodType}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, bloodType: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-mono font-medium"
+                  >
+                    {BLOOD_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Component Type <span className="text-rose-500">*</span></label>
+                  <select
+                    value={createIssuanceForm.component}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, component: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  >
+                    {COMPONENTS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">No. of Bags <span className="text-rose-500">*</span></label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={createIssuanceForm.units}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, units: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-mono font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Ward / Department</label>
+                  <input
+                    type="text"
+                    value={createIssuanceForm.ward}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, ward: e.target.value }))}
+                    placeholder="e.g. ICU, ER"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Clinical Diagnosis</label>
+                  <input
+                    type="text"
+                    value={createIssuanceForm.diagnosis}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, diagnosis: e.target.value }))}
+                    placeholder="e.g. Severe Anemia"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Contact Person <span className="text-rose-500">*</span></label>
+                  <input
+                    type="text"
+                    value={createIssuanceForm.contactPerson}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, contactPerson: e.target.value }))}
+                    placeholder="Dr. or Nurse Name"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Contact Number <span className="text-rose-500">*</span></label>
+                  <input
+                    type="text"
+                    value={createIssuanceForm.contactNumber}
+                    onChange={e => setCreateIssuanceForm(f => ({ ...f, contactNumber: e.target.value }))}
+                    placeholder="e.g. 0917-XXX-XXXX"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex gap-3 text-xs font-bold bg-slate-50 flex-shrink-0">
+              <button
+                onClick={() => setShowCreateIssuanceModal(false)}
+                className="flex-1 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-650 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const f = createIssuanceForm;
+                  if (!f.hospitalId || !f.contactPerson.trim() || !f.contactNumber.trim()) {
+                    return alert('Please fill in all required fields marked with *');
+                  }
+                  
+                  const targetHosp = hospitals.find(h => h.id === f.hospitalId);
+                  
+                  // Check stock availability
+                  const inventoryItem = inventory.find(i => i.type === f.bloodType);
+                  if (!inventoryItem || inventoryItem.units < f.units) {
+                    return alert(`Insufficient inventory units! Current OLS units for type ${f.bloodType} is ${inventoryItem?.units || 0}. Maximum units requested cannot exceed this.`);
+                  }
+
+                  // 1. Add request
+                  const refNo = addBloodRequest({
+                    hospital: targetHosp?.name || 'Unknown Hospital',
+                    hospitalId: f.hospitalId,
+                    urgency: f.urgency,
+                    dateNeeded: new Date().toLocaleDateString(),
+                    contactPerson: f.contactPerson,
+                    contactNumber: f.contactNumber,
+                    diagnosis: f.diagnosis,
+                    ward: f.ward,
+                    patientBloodType: f.bloodType,
+                    units: f.units,
+                    items: [{ bloodType: f.bloodType, component: f.component, units: f.units }],
+                    filedByIssuance: true
+                  });
+
+                  // 2. Approve/dispatch request directly (decrements inventory & creates details logs)
+                  approveRequest(refNo);
+
+                  setShowCreateIssuanceModal(false);
+                  setIssuanceSuccessModal({
+                    isOpen: true,
+                    refNo,
+                    hospital: targetHosp?.name || 'Hospital',
+                    units: f.units,
+                    bloodType: f.bloodType,
+                    component: f.component
+                  });
+                }}
+                className="flex-1 py-2.5 bg-[#C21C24] hover:bg-[#A8181F] text-white rounded-lg transition shadow-sm cursor-pointer"
+              >
+                Dispatch & Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── DIRECT MANUAL ISSUANCE SUCCESS MODAL ─── */}
+      {issuanceSuccessModal.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center modal-in">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-slate-900 font-extrabold text-sm mb-1">Direct Issuance Completed!</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4 font-mono">Ref No: {issuanceSuccessModal.refNo}</p>
+            <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-5 text-left text-xs text-slate-650 space-y-1 font-semibold">
+              <p>🏥 <strong className="text-slate-800">Hospital:</strong> {issuanceSuccessModal.hospital}</p>
+              <p>🩸 <strong className="text-slate-800">Components:</strong> {issuanceSuccessModal.units} × {issuanceSuccessModal.bloodType} {issuanceSuccessModal.component}</p>
+              <p>📋 <strong className="text-slate-800">Inventory Status:</strong> Updated successfully</p>
+              <p>📂 <strong className="text-slate-800">Ledger Logs:</strong> Registered in general ledger</p>
+            </div>
+            <button
+              onClick={() => setIssuanceSuccessModal({ isOpen: false, refNo: '', hospital: '', units: 0, bloodType: '', component: '' })}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs transition cursor-pointer"
+            >
+              Acknowledge & Close
+            </button>
           </div>
         </div>
       )}

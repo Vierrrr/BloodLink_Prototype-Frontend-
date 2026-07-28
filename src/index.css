@@ -42,7 +42,7 @@
 .content-area {
   flex: 1;
   margin-left: 250px;
-  min-height: 100vh;
+  height: 100vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -371,3 +371,51 @@
   fill: #b4b4b4;
 }
 
+/* ─── REGISTRATION SUCCESS MODAL ANIMATIONS ─── */
+@keyframes successRingPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  60%  { box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.success-ring {
+  animation: successRingPulse 1.4s ease-out 0.25s 2;
+}
+
+@keyframes checkDraw {
+  from { stroke-dashoffset: 60; opacity: 0; }
+  to   { stroke-dashoffset: 0;  opacity: 1; }
+}
+.check-draw {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: checkDraw 0.5s cubic-bezier(0.65, 0, 0.45, 1) 0.3s forwards;
+}
+
+@keyframes rowSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.row-slide-1 { opacity: 0; animation: rowSlideUp 0.3s ease 0.45s forwards; }
+.row-slide-2 { opacity: 0; animation: rowSlideUp 0.3s ease 0.55s forwards; }
+.row-slide-3 { opacity: 0; animation: rowSlideUp 0.3s ease 0.65s forwards; }
+.row-slide-4 { opacity: 0; animation: rowSlideUp 0.3s ease 0.75s forwards; }
+
+@keyframes badgeShine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.donor-id-badge {
+  background: linear-gradient(
+    90deg,
+    #C21C24 0%,
+    #E53E3E 40%,
+    #ffffff80 50%,
+    #E53E3E 60%,
+    #C21C24 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: badgeShine 2.5s linear 0.8s 2;
+}
