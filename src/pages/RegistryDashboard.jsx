@@ -101,6 +101,7 @@ export default function RegistryDashboard() {
 
   const [recallConfirm, setRecallConfirm] = useState({ isOpen: false, donorId: '', donorName: '', isBulk: false });
   const [recallSuccess, setRecallSuccess] = useState({ isOpen: false, message: '', details: null });
+  const [noticeModal, setNoticeModal] = useState({ isOpen: false, title: '', message: '', variant: 'warning' });
 
   // Lab Results (Table 8) modal state
   const [showLabResultModal, setShowLabResultModal] = useState(false);
@@ -1668,7 +1669,7 @@ export default function RegistryDashboard() {
                 >Cancel</button>
                 <button
                   onClick={() => {
-                    if (!labForm.donationId) return alert('Please select a donation record first.');
+                    if (!labForm.donationId) return setNoticeModal({ isOpen: true, title: 'No Donation Selected', message: 'Please select a donation record first before encoding lab results.', variant: 'warning' });
                     addLabTestResult(labForm);
                     setLabSaved(true);
                     setLabDonationSearchQuery('');
@@ -2155,6 +2156,18 @@ export default function RegistryDashboard() {
         message={recallSuccess.message}
         confirmText="Acknowledge & Close"
         onClose={() => setRecallSuccess({ isOpen: false, message: '' })}
+      />
+
+      {/* ── NOTICE / VALIDATION MODAL ── */}
+      <ConfirmationModal
+        isOpen={noticeModal.isOpen}
+        title={noticeModal.title}
+        message={noticeModal.message}
+        confirmText="Got It"
+        cancelText=""
+        variant={noticeModal.variant}
+        onConfirm={() => setNoticeModal({ isOpen: false, title: '', message: '', variant: 'warning' })}
+        onCancel={() => setNoticeModal({ isOpen: false, title: '', message: '', variant: 'warning' })}
       />
 
     </div>

@@ -37,18 +37,21 @@ export default function ConfirmationModal({
   };
 
   const style = colorStyles[variant] || colorStyles.danger;
+  const showCancel = cancelText && cancelText.trim() !== '';
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm modal-in">
       <div className="bg-white rounded-3xl w-full max-w-sm p-7 text-center relative shadow-2xl border border-slate-100">
-        {/* Close X button */}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-full hover:bg-slate-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Close X button — only shown when cancel is available */}
+        {showCancel && onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-full hover:bg-slate-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Outer & Inner Concentric Icon Badge */}
         <div className="flex justify-center mb-1 mt-1">
@@ -71,13 +74,15 @@ export default function ConfirmationModal({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 py-3 px-4 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold text-sm hover:bg-slate-50 transition cursor-pointer"
-          >
-            {cancelText}
-          </button>
+          {showCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold text-sm hover:bg-slate-50 transition cursor-pointer"
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}

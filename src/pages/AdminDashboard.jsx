@@ -189,6 +189,12 @@ export default function AdminDashboard() {
   });
   const [issuanceSuccessModal, setIssuanceSuccessModal] = useState({ isOpen: false, refNo: '', hospital: '', units: 0, bloodType: '', component: '' });
 
+  // Generic notice/alert modal (replaces alert())
+  const [noticeModal, setNoticeModal] = useState({ isOpen: false, title: '', message: '', variant: 'warning' });
+  // Admin-level SMS recall confirm + success modals
+  const [adminRecallConfirm, setAdminRecallConfirm] = useState({ isOpen: false, donorId: '', donorName: '', isBulk: false, eligibleCount: 0, action: null });
+  const [adminRecallSuccess, setAdminRecallSuccess] = useState({ isOpen: false, message: '' });
+
   // Map References
   const mobMapRef = useRef(null);
   const mobMapInstance = useRef(null);
@@ -485,20 +491,34 @@ export default function AdminDashboard() {
     }).filter(donor => donor.diffDays >= 85 && donor.diffDays <= 90);
 
     if (eligibleDonors.length === 0) {
-      alert('No eligible donors in the 85–90 day interval found to recall today.');
+      setNoticeModal({
+        isOpen: true,
+        title: 'No Eligible Donors Found',
+        message: 'No eligible donors in the 85–90 day interval were found to recall today.',
+        variant: 'warning'
+      });
       return;
     }
 
-    // Dispatch recall log record for each eligible donor
-    eligibleDonors.forEach(donor => {
-      dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
-      // Also log to the general SMS gateway log
-      const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
-      dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
+    // Show confirmation before dispatching
+    setAdminRecallConfirm({
+      isOpen: true,
+      isBulk: true,
+      eligibleCount: eligibleDonors.length,
+      donorName: `${eligibleDonors.length} Donors`,
+      action: () => {
+        eligibleDonors.forEach(donor => {
+          dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
+          const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
+          dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
+        });
+        setReEligibilityComplete(false);
+        setAdminRecallSuccess({
+          isOpen: true,
+          message: `Recall alerts successfully dispatched to ${eligibleDonors.length} eligible donors via Semaphore Gateway.`
+        });
+      }
     });
-
-    alert(`Successfully dispatched recall alerts to ${eligibleDonors.length} eligible donors via Semaphore Gateway!`);
-    setReEligibilityComplete(false);
   };
 
   const handleRequestAction = (refNo, status) => {
@@ -939,10 +959,19 @@ export default function AdminDashboard() {
                             <td className="px-6 py-3.5 text-center">
                               <button
                                 onClick={() => {
-                                  dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
-                                  const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
-                                  dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
-                                  alert(`Recall SMS sent to ${donor.name}!`);
+                                  setAdminRecallConfirm({
+                                    isOpen: true,
+                                    isBulk: false,
+                                    donorName: donor.name,
+                                    donorId: donor.id,
+                                    eligibleCount: 1,
+                                    action: () => {
+                                      dispatchRecallSMS(donor.id, authSystemUser?.id || 'USR-002');
+                                      const msg = `🩸 Hello ${donor.name}. Your 90-day donation interval is complete! You are eligible to donate again. Visit bloodlinkdvo.ph to learn more.`;
+                                      dispatchSMSLog(donor.name, donor.phone || '+63 917 123 4567', msg, '#C21C24', donor.name.split(' ').map(n => n[0]).join(''));
+                                      setAdminRecallSuccess({ isOpen: true, message: `Recall SMS dispatched to ${donor.name} via Semaphore Gateway.` });
+                                    }
+                                  });
                                 }}
                                 className="bg-slate-900 text-white text-[10px] px-2.5 py-1 rounded font-bold hover:bg-slate-800 transition"
                               >
@@ -2919,7 +2948,7 @@ export default function AdminDashboard() {
               <button onClick={() => setShowHospitalModal(false)} className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-650 rounded hover:bg-slate-100 transition-all">Cancel</button>
               <button
                 onClick={() => {
-                  if (!hospitalForm.name.trim()) return alert('Hospital name is required.');
+                  if (!hospitalForm.name.trim()) return setNoticeModal({ isOpen: true, title: 'Required Field Missing', message: 'Hospital name is required.', variant: 'warning' });
                   if (editingHospital) {
                     updateHospital(editingHospital.id, hospitalForm);
                   } else {
@@ -3138,7 +3167,7 @@ export default function AdminDashboard() {
                 >Cancel</button>
                 <button
                   onClick={() => {
-                    if (!addUserForm.firstName.trim() || !addUserForm.lastName.trim() || !addUserForm.email.trim()) return alert('First name, last name, and email are required.');
+                    if (!addUserForm.firstName.trim() || !addUserForm.lastName.trim() || !addUserForm.email.trim()) return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'First name, last name, and email are required.', variant: 'warning' });
                     addUser(addUserForm);
                     setUserSaved(true);
                     setAddUserForm({ firstName: '', lastName: '', email: '', passwordHash: '', contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003', status: 'Active', hospitalId: '' });
@@ -3247,7 +3276,7 @@ export default function AdminDashboard() {
                 >Cancel</button>
                 <button
                   onClick={() => {
-                    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) return alert('First name, last name, and email are required.');
+                    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'First name, last name, and email are required.', variant: 'warning' });
                     updateUser(editingUser.id, editUserForm);
                     setEditUserSaved(true);
                     setTimeout(() => {
@@ -3358,7 +3387,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => {
                     if (!eventForm.cityMunicipality.trim() || !eventForm.eventDate.trim()) {
-                      return alert('City/Municipality and Event Date are required.');
+                      return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'City/Municipality and Event Date are required.', variant: 'warning' });
                     }
                     addDonationEvent({ ...eventForm, registeredBy: authSystemUser?.username || 'admin' });
                     setEventSaved(true);
@@ -3515,7 +3544,7 @@ export default function AdminDashboard() {
                 onClick={() => {
                   const f = createIssuanceForm;
                   if (!f.hospitalId || !f.contactPerson.trim() || !f.contactNumber.trim()) {
-                    return alert('Please fill in all required fields marked with *');
+                    return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'Please fill in all required fields marked with *.', variant: 'warning' });
                   }
                   
                   const targetHosp = hospitals.find(h => h.id === f.hospitalId);
@@ -3523,7 +3552,7 @@ export default function AdminDashboard() {
                   // Check stock availability
                   const inventoryItem = inventory.find(i => i.type === f.bloodType);
                   if (!inventoryItem || inventoryItem.units < f.units) {
-                    return alert(`Insufficient inventory units! Current OLS units for type ${f.bloodType} is ${inventoryItem?.units || 0}. Maximum units requested cannot exceed this.`);
+                    return setNoticeModal({ isOpen: true, title: 'Insufficient Inventory', message: `Current OLS units for type ${f.bloodType} is ${inventoryItem?.units || 0}. Maximum units requested cannot exceed available stock.`, variant: 'danger' });
                   }
 
                   // 1. Add request
@@ -3578,6 +3607,45 @@ export default function AdminDashboard() {
           { label: "Inventory Status", value: "Updated Successfully" },
           { label: "Ledger Logs", value: "Registered in General Ledger" }
         ]}
+      />
+
+      {/* ─── GENERIC NOTICE / VALIDATION MODAL ─── */}
+      <ConfirmationModal
+        isOpen={noticeModal.isOpen}
+        title={noticeModal.title}
+        message={noticeModal.message}
+        confirmText="Got It"
+        cancelText=""
+        variant={noticeModal.variant}
+        onConfirm={() => setNoticeModal({ isOpen: false, title: '', message: '', variant: 'warning' })}
+        onCancel={() => setNoticeModal({ isOpen: false, title: '', message: '', variant: 'warning' })}
+      />
+
+      {/* ─── ADMIN SMS RECALL CONFIRMATION MODAL ─── */}
+      <ConfirmationModal
+        isOpen={adminRecallConfirm.isOpen}
+        title={adminRecallConfirm.isBulk ? `Dispatch Bulk Recall to ${adminRecallConfirm.eligibleCount} Donors?` : `Dispatch Recall SMS to ${adminRecallConfirm.donorName}?`}
+        message={adminRecallConfirm.isBulk
+          ? `This will dispatch re-eligibility recall alerts to all ${adminRecallConfirm.eligibleCount} eligible donors via Semaphore Gateway. Please confirm to proceed.`
+          : `This will dispatch a recall SMS to ${adminRecallConfirm.donorName} via Semaphore Gateway. Please confirm to proceed.`
+        }
+        confirmText="Confirm Dispatch"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          if (adminRecallConfirm.action) adminRecallConfirm.action();
+          setAdminRecallConfirm({ isOpen: false, donorId: '', donorName: '', isBulk: false, eligibleCount: 0, action: null });
+        }}
+        onCancel={() => setAdminRecallConfirm({ isOpen: false, donorId: '', donorName: '', isBulk: false, eligibleCount: 0, action: null })}
+      />
+
+      {/* ─── ADMIN SMS RECALL SUCCESS MODAL ─── */}
+      <SuccessModal
+        isOpen={adminRecallSuccess.isOpen}
+        title="SMS Dispatched Successfully"
+        message={adminRecallSuccess.message}
+        confirmText="Acknowledge & Close"
+        onClose={() => setAdminRecallSuccess({ isOpen: false, message: '' })}
       />
 
     </div>
