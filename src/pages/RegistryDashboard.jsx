@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
+import ConfirmationModal from '../components/ConfirmationModal';
+import SuccessModal from '../components/SuccessModal';
 
 const BLOOD_TYPES = ['All', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const ITEMS_PER_PAGE = 5;
@@ -86,6 +88,19 @@ export default function RegistryDashboard() {
   // Clinical Screening & Serology Lab outcome state
   const [editingMedicalDonor, setEditingMedicalDonor] = useState(null);
   const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [screeningSuccessModal, setScreeningSuccessModal] = useState({
+    isOpen: false,
+    donorId: '',
+    donorName: '',
+    outcome: '',
+    remarks: '',
+    eventId: '',
+    venue: '',
+    donationDate: ''
+  });
+
+  const [recallConfirm, setRecallConfirm] = useState({ isOpen: false, donorId: '', donorName: '', isBulk: false });
+  const [recallSuccess, setRecallSuccess] = useState({ isOpen: false, message: '', details: null });
 
   // Lab Results (Table 8) modal state
   const [showLabResultModal, setShowLabResultModal] = useState(false);
@@ -264,18 +279,23 @@ export default function RegistryDashboard() {
   // Individual SMS Recall
   const handleRecall = (id) => {
     const donorObj = preparedDonors.find(d => d.id === id);
-    alert(`SMS Recall Dispatch triggered for Donor: ${donorObj?.name || id}`);
+    setRecallConfirm({
+      isOpen: true,
+      donorId: id,
+      donorName: donorObj?.name || id,
+      isBulk: false
+    });
   };
 
   // Bulk SMS Recall
   const handleBulkRecall = () => {
     if (selectedRecallIds.length === 0) return;
-    const selectedNames = preparedDonors
-      .filter(d => selectedRecallIds.includes(d.id))
-      .map(d => d.name)
-      .join(', ');
-    alert(`Bulk SMS Recall dispatched to ${selectedRecallIds.length} donors:\n${selectedNames}`);
-    setSelectedRecallIds([]);
+    setRecallConfirm({
+      isOpen: true,
+      donorId: '',
+      donorName: `${selectedRecallIds.length} Donors`,
+      isBulk: true
+    });
   };
 
   const handleSelectAll = (e) => {
@@ -1850,126 +1870,22 @@ export default function RegistryDashboard() {
       )}
 
       {/* ── DONOR REGISTRATION SUCCESS MODAL ── */}
-      {registrationSuccess.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden modal-in" style={{ boxShadow: '0 32px 64px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06)' }}>
-
-            {/* ── Top gradient header ── */}
-            <div className="relative overflow-hidden px-8 pt-10 pb-8 flex flex-col items-center" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 60%, #0f172a 100%)' }}>
-              {/* Decorative radial blur */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }} />
-
-              {/* Animated SVG check ring */}
-              <div className="relative z-10 mb-5">
-                <div className="success-ring w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.12)', border: '2px solid rgba(16,185,129,0.35)' }}>
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <circle cx="20" cy="20" r="18" stroke="rgba(16,185,129,0.2)" strokeWidth="2" />
-                    <circle cx="20" cy="20" r="18" stroke="#10b981" strokeWidth="2" strokeLinecap="round"
-                      strokeDasharray="113" strokeDashoffset="0"
-                      style={{ opacity: 0, animation: 'checkDraw 0.6s ease 0.1s forwards', strokeDashoffset: 113 }}
-                    />
-                    <path
-                      d="M12 20.5 L17.5 26 L28 15"
-                      stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                      className="check-draw"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <h2 className="relative z-10 text-white font-bold text-lg tracking-tight text-center leading-tight">
-                Donor Registered Successfully
-              </h2>
-              <p className="relative z-10 text-slate-400 text-[11px] font-medium mt-1 text-center">
-                Profile saved to <span className="text-emerald-400 font-semibold">SNBC-M · Table 5: Donors</span>
-              </p>
-            </div>
-
-            {/* ── Detail rows ── */}
-            <div className="px-6 py-5 space-y-0 divide-y divide-slate-100">
-
-              {/* Row 1 — Donor Name */}
-              <div className="row-slide-1 flex items-center justify-between py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Donor Name</span>
-                </div>
-                <span className="text-xs font-bold text-slate-800">{registrationSuccess.donorName}</span>
-              </div>
-
-              {/* Row 2 — Donor ID */}
-              <div className="row-slide-2 flex items-center justify-between py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#C21C24" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Donor ID</span>
-                </div>
-                <span className="donor-id-badge text-sm font-extrabold font-mono tracking-wider">{registrationSuccess.donorId}</span>
-              </div>
-
-              {/* Row 3 — Status */}
-              <div className="row-slide-3 flex items-center justify-between py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Record Status</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" style={{ animation: 'successRingPulse 2s ease-out infinite' }} />
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">Active · Pending Lab Confirmation</span>
-                </div>
-              </div>
-
-              {/* Row 4 — Registered On */}
-              <div className="row-slide-4 flex items-center justify-between py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registered On</span>
-                </div>
-                <span className="text-xs font-semibold text-slate-600 font-mono">
-                  {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
-              </div>
-            </div>
-
-            {/* ── Info notice ── */}
-            <div className="mx-6 mb-5 flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#d97706" strokeWidth="2" className="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
-                Blood type is <span className="font-bold">Pending Confirmation</span>. Encode the confirmatory blood type via <span className="font-bold">Section II — Lab Serology</span> to fully activate this donor.
-              </p>
-            </div>
-
-            {/* ── Footer actions ── */}
-            <div className="px-6 pb-6 flex gap-2.5">
-              <button
-                onClick={() => setRegistrationSuccess({ isOpen: false, donorId: '', donorName: '' })}
-                className="flex-1 py-2.5 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setRegistrationSuccess({ isOpen: false, donorId: '', donorName: '' });
-                  setTab('registry');
-                }}
-                className="flex-[2] py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}
-              >
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                Go to Donor List
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <SuccessModal
+        isOpen={registrationSuccess.isOpen}
+        title="Donor Registered Successfully"
+        message="Profile saved to SNBC-M · Table 5: Donors"
+        confirmText="Go to Donor List"
+        onClose={() => {
+          setRegistrationSuccess({ isOpen: false, donorId: '', donorName: '' });
+          setTab('registry');
+        }}
+        details={[
+          { label: "Donor Name", value: registrationSuccess.donorName },
+          { label: "Donor ID", value: registrationSuccess.donorId },
+          { label: "Record Status", value: "Active · Pending Lab Conf." },
+          { label: "Registered On", value: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) }
+        ]}
+      />
 
       {/* ── ONSITE SCREENING OUTCOMES MODAL ── */}
       {editingMedicalDonor && (
@@ -2153,13 +2069,31 @@ export default function RegistryDashboard() {
                 <button
                   onClick={() => {
                     const updatedStatus = medicalForm.screeningOutcome === 'Accepted' ? 'Regular' : 'Deferred';
+                    const remarks = medicalForm.screeningOutcome === 'Accepted' ? 'Eligible for Donation' : medicalForm.deferralReason || 'Deferred';
+                    
                     updateDonorMedical(editingMedicalDonor.id, {
                       ...medicalForm,
                       status: updatedStatus,
-                      remarks: medicalForm.screeningOutcome === 'Accepted' ? 'Eligible' : medicalForm.deferralReason || 'Deferred'
+                      remarks
                     });
+
+                    const donorName = editingMedicalDonor.name;
+                    const donorId = editingMedicalDonor.id;
+                    const savedForm = { ...medicalForm };
+
                     setEditingMedicalDonor(null);
                     setEventSearchQuery('');
+
+                    setScreeningSuccessModal({
+                      isOpen: true,
+                      donorId,
+                      donorName,
+                      outcome: savedForm.screeningOutcome,
+                      remarks,
+                      eventId: savedForm.eventId || 'EVT-001',
+                      venue: savedForm.barangayOrganization || savedForm.cityMunicipality || 'Davao City',
+                      donationDate: savedForm.donationDate || new Date().toISOString().slice(0, 10)
+                    });
                   }}
                   className="px-4 py-2 text-xs font-bold text-white bg-[#C21C24] hover:bg-[#A8181F] rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer">
                   <CheckCircle className="w-3.5 h-3.5" /> Save Onsite Screening
@@ -2169,6 +2103,59 @@ export default function RegistryDashboard() {
           </div>
         </div>
       )}
+
+      {/* ── ONSITE SCREENING SUCCESS CONFIRMATION MODAL ── */}
+      <SuccessModal
+        isOpen={screeningSuccessModal.isOpen}
+        title="Screening Outcome Recorded"
+        message={`Onsite screening decisions updated for ${screeningSuccessModal.donorName}`}
+        confirmText="Acknowledge & Close"
+        onClose={() => setScreeningSuccessModal({ isOpen: false, donorId: '', donorName: '', outcome: '', remarks: '', eventId: '', venue: '', donationDate: '' })}
+        details={[
+          { label: "Donor ID", value: screeningSuccessModal.donorId },
+          { label: "Outcome", value: screeningSuccessModal.outcome },
+          { label: "Linked Event", value: `${screeningSuccessModal.venue} (${screeningSuccessModal.eventId})` },
+          { label: "Remarks", value: screeningSuccessModal.remarks }
+        ]}
+      />
+
+      {/* ── SMS RECALL CONFIRMATION & SUCCESS MODALS ── */}
+      <ConfirmationModal
+        isOpen={recallConfirm.isOpen}
+        title={recallConfirm.isBulk ? "Dispatch Bulk Recall?" : "Dispatch Recall SMS?"}
+        message={recallConfirm.isBulk 
+          ? `This will dispatch recall alerts to all ${recallConfirm.donorName} via Semaphore Gateway. Please confirm to proceed.`
+          : `This will dispatch a recall SMS to ${recallConfirm.donorName}. Please confirm to proceed.`}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          const donorName = recallConfirm.donorName;
+          const isBulk = recallConfirm.isBulk;
+          setRecallConfirm({ isOpen: false, donorId: '', donorName: '', isBulk: false });
+          if (isBulk) {
+            setSelectedRecallIds([]);
+            setRecallSuccess({
+              isOpen: true,
+              message: `Bulk SMS recall successfully dispatched via Semaphore Gateway.`
+            });
+          } else {
+            setRecallSuccess({
+              isOpen: true,
+              message: `Recall SMS has been dispatched via Semaphore Gateway to ${donorName}.`
+            });
+          }
+        }}
+        onCancel={() => setRecallConfirm({ isOpen: false, donorId: '', donorName: '', isBulk: false })}
+      />
+
+      <SuccessModal
+        isOpen={recallSuccess.isOpen}
+        title="Dispatched Successfully"
+        message={recallSuccess.message}
+        confirmText="Acknowledge & Close"
+        onClose={() => setRecallSuccess({ isOpen: false, message: '' })}
+      />
 
     </div>
   );

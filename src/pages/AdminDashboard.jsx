@@ -37,6 +37,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
+import ConfirmationModal from '../components/ConfirmationModal';
+import SuccessModal from '../components/SuccessModal';
 const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
 
@@ -3563,29 +3565,20 @@ export default function AdminDashboard() {
       )}
 
       {/* ─── DIRECT MANUAL ISSUANCE SUCCESS MODAL ─── */}
-      {issuanceSuccessModal.isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center modal-in">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200">
-              <CheckCircle className="w-6 h-6" />
-            </div>
-            <h3 className="text-slate-900 font-extrabold text-sm mb-1">Direct Issuance Completed!</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4 font-mono">Ref No: {issuanceSuccessModal.refNo}</p>
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-5 text-left text-xs text-slate-650 space-y-1 font-semibold">
-              <p>🏥 <strong className="text-slate-800">Hospital:</strong> {issuanceSuccessModal.hospital}</p>
-              <p>🩸 <strong className="text-slate-800">Components:</strong> {issuanceSuccessModal.units} × {issuanceSuccessModal.bloodType} {issuanceSuccessModal.component}</p>
-              <p>📋 <strong className="text-slate-800">Inventory Status:</strong> Updated successfully</p>
-              <p>📂 <strong className="text-slate-800">Ledger Logs:</strong> Registered in general ledger</p>
-            </div>
-            <button
-              onClick={() => setIssuanceSuccessModal({ isOpen: false, refNo: '', hospital: '', units: 0, bloodType: '', component: '' })}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs transition cursor-pointer"
-            >
-              Acknowledge & Close
-            </button>
-          </div>
-        </div>
-      )}
+      <SuccessModal
+        isOpen={issuanceSuccessModal.isOpen}
+        title="Direct Issuance Completed!"
+        message="The manual blood dispatch transaction has been logged."
+        confirmText="Acknowledge & Close"
+        onClose={() => setIssuanceSuccessModal({ isOpen: false, refNo: '', hospital: '', units: 0, bloodType: '', component: '' })}
+        details={[
+          { label: "Ref No", value: issuanceSuccessModal.refNo },
+          { label: "Hospital", value: issuanceSuccessModal.hospital },
+          { label: "Components", value: `${issuanceSuccessModal.units} × ${issuanceSuccessModal.bloodType} ${issuanceSuccessModal.component}` },
+          { label: "Inventory Status", value: "Updated Successfully" },
+          { label: "Ledger Logs", value: "Registered in General Ledger" }
+        ]}
+      />
 
     </div>
   );
