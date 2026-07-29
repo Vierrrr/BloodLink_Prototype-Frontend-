@@ -2076,15 +2076,23 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-3">
                                 <button
                                   onClick={() => setDrilldownHospital(null)}
-                                  className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shadow-sm"
+                                  className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shadow-sm cursor-pointer"
                                 >
                                   <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                                   </svg>
                                 </button>
+                                
+                                {/* Hospital Logo Badge */}
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600 border border-indigo-700 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                                  <Building2 className="w-5 h-5" />
+                                </div>
+
                                 <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hospital Demand Drilldown</p>
-                                  <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">{drilldownHospital.name.split('(')[0].trim()}</h3>
+                                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Hospital Demand Drilldown</p>
+                                  <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2">
+                                    {drilldownHospital.name.split('(')[0].trim()}
+                                  </h3>
                                   <p className="text-[10px] text-slate-400 font-mono">{drilldownHospital.id} · {drilldownHospital.type}</p>
                                 </div>
                               </div>
