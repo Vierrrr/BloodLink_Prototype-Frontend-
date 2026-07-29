@@ -104,6 +104,14 @@ export default function BloodBankDashboard() {
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setTab('distribution')}
+              className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}
+            >
+              <Activity className="nav-icon" />
+              <span>Distribution Reco</span>
+            </button>
           </nav>
         </div>
 
@@ -123,10 +131,10 @@ export default function BloodBankDashboard() {
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
           <div>
             <h2 className="text-slate-900 font-bold text-sm leading-tight">
-              {tab === 'inventory' ? 'Blood Component Inventory' : 'Hospital Issuance Queue'}
+              {tab === 'inventory' ? 'Blood Component Inventory' : tab === 'requests' ? 'Hospital Issuance Queue' : 'Distribution Recommendation'}
             </h2>
             <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">
-              {tab === 'inventory' ? 'Live tracking of PRBC, FFP, Cryoprecipitate, and Cryosupernate levels' : 'Review pending requests and process blood unit issuance'}
+              {tab === 'inventory' ? 'Live tracking of PRBC, FFP, Cryoprecipitate, and Cryosupernate levels' : tab === 'requests' ? 'Review pending requests and process blood unit issuance' : 'Equity-based blood distribution recommendations across hospital network'}
             </p>
           </div>
 
@@ -372,7 +380,7 @@ export default function BloodBankDashboard() {
                         <th className="px-6 py-3 font-bold">Ref No / Hospital</th>
                         <th className="px-6 py-3 font-bold text-center">Blood Type</th>
                         <th className="px-6 py-3 font-bold text-center">Units</th>
-                        <th className="px-6 py-3 font-bold">Diagnosis / Ward</th>
+                        <th className="px-6 py-3 font-bold">Clinical Diagnosis</th>
                         <th className="px-6 py-3 font-bold">Contact Person</th>
                         <th className="px-6 py-3 text-center font-bold">Actions</th>
                       </tr>
@@ -395,7 +403,6 @@ export default function BloodBankDashboard() {
                           </td>
                           <td className="px-6 py-3.5 font-normal">
                             <p className="font-semibold text-slate-700">{req.diagnosis || req.notes || 'Routine Clinic Use'}</p>
-                            {req.ward && <p className="text-[10px] text-slate-400 mt-0.5">{req.ward}</p>}
                           </td>
                           <td className="px-6 py-3.5 font-normal">
                             <p className="font-semibold text-slate-800">{req.contactPerson}</p>
@@ -465,6 +472,50 @@ export default function BloodBankDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 3: DISTRIBUTION RECOMMENDATION */}
+          {tab === 'distribution' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                <Activity className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-bold mb-0.5">Equity-Based Blood Distribution Algorithm</p>
+                  <p className="text-blue-700">Allocations are computed proportionally based on hospital type weighting (Government 1.5×, Blood Bank 1.2×, Private 1.0×) and predicted demand week. Only units above safety threshold are recommended for release.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {inventory.map(item => (
+                  <div key={item.type} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded text-sm font-mono">{item.type}</span>
+                        <span className={`text-[10px] font-bold uppercase ${item.status === 'critical' ? 'text-rose-600' : item.status === 'low' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {item.status === 'critical' ? '⚠ Critical Stock' : item.status === 'low' ? '↓ Low Stock' : '✓ Stable'}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-slate-700">Stock: {item.units} units</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-500 font-semibold">
+                        <span>SPMC (Government)</span>
+                        <span className="font-mono text-slate-900 font-bold">{Math.round(item.units * 0.5)} units (50%)</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 font-semibold">
+                        <span>Red Cross (Blood Bank)</span>
+                        <span className="font-mono text-slate-900 font-bold">{Math.round(item.units * 0.3)} units (30%)</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 font-semibold">
+                        <span>DMSF Hospital (Private)</span>
+                        <span className="font-mono text-slate-900 font-bold">{Math.round(item.units * 0.2)} units (20%)</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

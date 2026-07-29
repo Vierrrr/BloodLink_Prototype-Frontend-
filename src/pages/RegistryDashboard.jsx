@@ -183,8 +183,26 @@ export default function RegistryDashboard() {
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    const id = 'D' + String(Math.floor(Math.random() * 900) + 100);
     const fullName = `${newDonorForm.firstName} ${newDonorForm.middleName ? newDonorForm.middleName + ' ' : ''}${newDonorForm.lastName}`.trim();
+    
+    // Duplicate check: check if donor with same full name or phone/email exists
+    const isDuplicate = donors.some(d => 
+      (d.name && d.name.toLowerCase() === fullName.toLowerCase()) ||
+      (newDonorForm.phone && (d.phone === newDonorForm.phone || d.contactNumber === newDonorForm.phone)) ||
+      (newDonorForm.email && d.email && d.email.toLowerCase() === newDonorForm.email.toLowerCase())
+    );
+
+    if (isDuplicate) {
+      setNoticeModal({
+        isOpen: true,
+        title: 'Duplicate Entry Detected',
+        message: `A donor with the name "${fullName}" or contact information already exists in the system registry. Please verify the donor record to prevent duplicate entries.`,
+        variant: 'danger'
+      });
+      return;
+    }
+
+    const id = 'D' + String(Math.floor(Math.random() * 900) + 100);
     const newDonor = {
       id,
       firstName: newDonorForm.firstName,

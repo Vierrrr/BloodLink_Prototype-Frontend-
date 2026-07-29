@@ -157,6 +157,9 @@ export default function AdminDashboard() {
   // SMS Recall confirmation modal
   const [showSmsConfirmModal, setShowSmsConfirmModal] = useState(false);
 
+  // Hospital demand drilldown (Granular Component Breakdown)
+  const [drilldownHospital, setDrilldownHospital] = useState(null); // null = list view, object = detail view
+
   // Reports local tab
   const [reportsTab, setReportsTab] = useState('stock');
 
@@ -1929,33 +1932,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Per Blood Type Breakdown (Overview only) */}
-                    {isOverview && (
-                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                          <div>
-                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Blood Type</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Summed across all hospitals & components — click a blood type to filter</p>
-                          </div>
-                        </div>
-                        <div className="p-5 grid grid-cols-4 md:grid-cols-8 gap-3">
-                          {BLOOD_TYPES.map(bt => {
-                            const rows = gf.filter(f => f.bloodTypeId === bt && f.weeksAhead === 1);
-                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
-                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
-                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
-                            return (
-                              <button key={bt} onClick={() => { setFcBloodType(bt); setRecBloodType(bt); }}
-                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition cursor-pointer group">
-                                <span className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition font-mono">{bt}</span>
-                                <span className="font-extrabold text-slate-900 text-sm">{total}</span>
-                                <span className="text-[9px] text-slate-400 font-semibold">{pct}% of total</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+
 
                     {/* Per Hospital Breakdown (Overview only) */}
                     {isOverview && (
@@ -1995,131 +1972,195 @@ export default function AdminDashboard() {
                       </div>
                     )}
 
-                    {/* Forecast Records Table — with independent inline filters */}
-                    {(() => {
-                      const recFiltered = gf.filter(f =>
-                        f.weeksAhead === 1 &&
-                        (recHospital === 'ALL' || f.hospitalId === recHospital) &&
-                        (recBloodType === 'ALL' || f.bloodTypeId === recBloodType) &&
-                        (recComponent === 'ALL' || f.componentId === recComponent) &&
-                        (!recSearch || [
-                          f.forecastId,
-                          hospitals.find(h => h.id === f.hospitalId)?.name || '',
-                          f.bloodTypeId,
-                          f.componentId
-                        ].some(v => v.toLowerCase().includes(recSearch.toLowerCase())))
-                      );
-                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recSearch !== '';
-                      const displayRows = [...(recIsFiltered ? recFiltered : gf.filter(f => f.weeksAhead === 1))].sort((a, b) => b.predictedDemand - a.predictedDemand);
-                      return (
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                          {/* Table header + inline filters */}
-                          <div className="px-6 py-4 border-b border-slate-100">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                                  Granular Component Breakdown (Next Week) {recIsFiltered && <span className="text-slate-650">(Filtered)</span>}
-                                </h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  {recIsFiltered
-                                    ? `${displayRows.length} component record${displayRows.length !== 1 ? 's' : ''} matching filter — per blood type & component`
-                                    : `${displayRows.length} records · Breaks down the summary charts above into exact PRBC, FFP, Platelet & Cryo units per hospital`
-                                  }
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {recIsFiltered && (
-                                  <button
-                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecSearch(''); }}
-                                    className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition"
-                                  >↩ Clear</button>
-                                )}
-                                <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
-                              </div>
+                    {/* ─── GRANULAR COMPONENT BREAKDOWN: Hospital List → Drilldown ─── */}
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+
+                      {/* ── LIST VIEW (no hospital selected) ── */}
+                      {!drilldownHospital && (
+                        <>
+                          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                              <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                                Granular Component Breakdown — Next Week
+                              </h3>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Select a hospital to view its full demand breakdown by blood type &amp; component
+                              </p>
                             </div>
-                            {/* Inline filter row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hospital</label>
-                                <select value={recHospital} onChange={e => setRecHospital(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Hospitals</option>
-                                  {hospitals.map(h => <option key={h.id} value={h.id}>{h.name.split('(')[0].trim()}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type</label>
-                                <select value={recBloodType} onChange={e => setRecBloodType(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Blood Types</option>
-                                  {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Component</label>
-                                <select value={recComponent} onChange={e => setRecComponent(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Components</option>
-                                  {COMPONENTS.map(c => <option key={c}>{c}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search</label>
-                                <input
-                                  type="text"
-                                  value={recSearch}
-                                  onChange={e => setRecSearch(e.target.value)}
-                                  placeholder="ID, hospital, type…"
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none"
-                                />
-                              </div>
-                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                              {hospitals.length} hospitals registered
+                            </span>
                           </div>
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full text-xs">
-                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                <tr>
-                                  <th className="px-5 py-3 text-left">Forecast ID</th>
-                                  {recHospital === 'ALL' && <th className="px-5 py-3 text-left">Hospital</th>}
-                                  <th className="px-5 py-3 text-left">Blood Type</th>
-                                  <th className="px-5 py-3 text-left">Component</th>
-                                  <th className="px-5 py-3 text-right">Predicted Demand (Next Week)</th>
-                                  <th className="px-5 py-3 text-center">Confidence</th>
-                                  <th className="px-5 py-3 text-center">Trend</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                                {displayRows.length === 0 ? (
-                                  <tr><td colSpan={recHospital === 'ALL' ? 7 : 6} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
-                                ) : displayRows.map(f => (
-                                  <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
-                                    {recHospital === 'ALL' && <td className="px-5 py-2.5 text-slate-800 font-bold">{hospitals.find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim()}</td>}
-                                    <td className="px-5 py-2.5">
-                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] border border-slate-200 font-mono">{f.bloodTypeId}</span>
-                                    </td>
-                                    <td className="px-5 py-2.5">
-                                      <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
-                                    </td>
-                                    <td className="px-5 py-2.5 text-right">
-                                      <span className="text-base font-black text-indigo-600 font-mono">{f.predictedDemand}</span>
-                                      <span className="text-[10px] text-slate-400 ml-1">units</span>
-                                    </td>
-                                    <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound}–{f.upperBound}</td>
-                                    <td className="px-5 py-2.5 text-center">
-                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                          f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+
+                          <div className="divide-y divide-slate-100">
+                            {hospitals.map((hosp, idx) => {
+                              const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                              const totalBags = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                              const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                              const pct = allTotal ? Math.round((totalBags / allTotal) * 100) : 0;
+                              const barW = allTotal ? (totalBags / allTotal) * 100 : 0;
+                              const highestComp = rows.length ? rows.reduce((a, b) => b.predictedDemand > a.predictedDemand ? b : a, rows[0]) : null;
+                              const isRising = rows.some(f => f.slope > 0);
+                              const isFalling = rows.every(f => f.slope < 0);
+                              return (
+                                <button
+                                  key={hosp.id}
+                                  onClick={() => setDrilldownHospital(hosp)}
+                                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-indigo-50/40 transition text-left group"
+                                >
+                                  {/* Rank badge */}
+                                  <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-black text-slate-500 flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition">
+                                    {idx + 1}
+                                  </div>
+
+                                  {/* Name + ID */}
+                                  <div className="w-48 flex-shrink-0">
+                                    <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-700 transition truncate">{hosp.name.split('(')[0].trim()}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                  </div>
+
+                                  {/* Progress bar */}
+                                  <div className="flex-1">
+                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-indigo-500 rounded-full transition-all group-hover:bg-indigo-600" style={{ width: `${barW}%` }} />
+                                    </div>
+                                    {highestComp && (
+                                      <p className="text-[9px] text-slate-400 mt-1">
+                                        Top demand: <span className="font-bold text-slate-600">{highestComp.bloodTypeId} {highestComp.componentId}</span>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Trend */}
+                                  <div className="flex-shrink-0">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                      isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                      isFalling ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                      'bg-slate-50 border-slate-200 text-slate-500'
+                                    }`}>
+                                      {isRising ? '↑ Rising' : isFalling ? '↓ Falling' : '→ Stable'}
+                                    </span>
+                                  </div>
+
+                                  {/* Bag count */}
+                                  <div className="w-24 text-right flex-shrink-0">
+                                    <span className="font-black text-indigo-600 font-mono text-base">{totalBags}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1">bags</span>
+                                    <p className="text-[9px] text-slate-400">{pct}% of total</p>
+                                  </div>
+
+                                  {/* Arrow */}
+                                  <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {/* ── DRILLDOWN VIEW (hospital selected) ── */}
+                      {drilldownHospital && (() => {
+                        const hospRows = gf.filter(f => f.hospitalId === drilldownHospital.id && f.weeksAhead === 1);
+                        const totalBags = hospRows.reduce((s, f) => s + f.predictedDemand, 0);
+                        const byType = BLOOD_TYPES.map(bt => {
+                          const typeRows = hospRows.filter(f => f.bloodTypeId === bt);
+                          return { bt, total: typeRows.reduce((s, f) => s + f.predictedDemand, 0), rows: typeRows };
+                        }).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+
+                        return (
+                          <>
+                            {/* Drilldown header */}
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-white">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => setDrilldownHospital(null)}
+                                  className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shadow-sm"
+                                >
+                                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                  </svg>
+                                </button>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hospital Demand Drilldown</p>
+                                  <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">{drilldownHospital.name.split('(')[0].trim()}</h3>
+                                  <p className="text-[10px] text-slate-400 font-mono">{drilldownHospital.id} · {drilldownHospital.type}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-2xl font-black text-indigo-600 font-mono">{totalBags}</p>
+                                <p className="text-[10px] text-slate-400">total bags next week</p>
+                              </div>
+                            </div>
+
+                            {/* KPI strip */}
+                            <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
+                              {[
+                                { label: 'Blood Types', value: byType.length },
+                                { label: 'Components', value: [...new Set(hospRows.map(f => f.componentId))].length },
+                                { label: 'Highest Demand', value: hospRows.length ? hospRows.reduce((a,b) => b.predictedDemand > a.predictedDemand ? b : a, hospRows[0]) : null, render: v => v ? `${v.bloodTypeId} ${v.componentId}` : '—' },
+                                { label: 'Rising Trends', value: hospRows.filter(f => f.slope > 0).length }
+                              ].map((kpi, i) => (
+                                <div key={i} className="px-5 py-3 text-center">
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{kpi.label}</p>
+                                  <p className="font-extrabold text-slate-800 text-base font-mono mt-0.5">
+                                    {kpi.render ? kpi.render(kpi.value) : kpi.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Per Blood Type breakdown */}
+                            <div className="p-5 space-y-4">
+                              {byType.map(({ bt, total, rows: typeRows }) => {
+                                const allTotal = totalBags || 1;
+                                return (
+                                  <div key={bt} className="border border-slate-100 rounded-xl overflow-hidden">
+                                    {/* Blood type header row */}
+                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                                      <span className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 font-black text-[11px] flex items-center justify-center font-mono shadow-sm">{bt}</span>
+                                      <div className="flex-1">
+                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(total / allTotal) * 100}%` }} />
+                                        </div>
+                                      </div>
+                                      <span className="font-black text-indigo-600 font-mono text-sm">{total}</span>
+                                      <span className="text-[10px] text-slate-400">bags</span>
+                                      <span className="text-[10px] text-slate-400 w-8 text-right">{Math.round((total / allTotal) * 100)}%</span>
+                                    </div>
+                                    {/* Component rows */}
+                                    <div className="divide-y divide-slate-50">
+                                      {typeRows.sort((a, b) => b.predictedDemand - a.predictedDemand).map(f => (
+                                        <div key={f.forecastId} className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-50/70 transition">
+                                          <span className="text-[10px] font-mono text-slate-400 w-28">{f.forecastId}</span>
+                                          <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-0.5 rounded text-[10px] font-bold">{f.componentId}</span>
+                                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-400 rounded-full" style={{ width: `${total ? (f.predictedDemand / total) * 100 : 0}%` }} />
+                                          </div>
+                                          <span className="font-extrabold text-slate-800 font-mono text-sm w-8 text-right">{f.predictedDemand}</span>
+                                          <span className="text-[9px] text-slate-400 w-16 text-right">±{f.lowerBound}–{f.upperBound}</span>
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-16 text-center ${
+                                            f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                            f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                                             'bg-slate-50 border-slate-200 text-slate-500'
-                                        }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                                          }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {byType.length === 0 && (
+                                <div className="text-center py-10 text-slate-400 text-xs">
+                                  No forecast data available for this hospital.
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </>
                 )}
               </div>
@@ -2949,6 +2990,19 @@ export default function AdminDashboard() {
               <button
                 onClick={() => {
                   if (!hospitalForm.name.trim()) return setNoticeModal({ isOpen: true, title: 'Required Field Missing', message: 'Hospital name is required.', variant: 'warning' });
+                  
+                  if (!editingHospital) {
+                    const isDup = hospitals.some(h => h.name.toLowerCase() === hospitalForm.name.trim().toLowerCase());
+                    if (isDup) {
+                      return setNoticeModal({
+                        isOpen: true,
+                        title: 'Duplicate Entry Detected',
+                        message: `A hospital with the name "${hospitalForm.name.trim()}" is already registered in the system.`,
+                        variant: 'danger'
+                      });
+                    }
+                  }
+
                   if (editingHospital) {
                     updateHospital(editingHospital.id, hospitalForm);
                   } else {
@@ -3168,6 +3222,17 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => {
                     if (!addUserForm.firstName.trim() || !addUserForm.lastName.trim() || !addUserForm.email.trim()) return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'First name, last name, and email are required.', variant: 'warning' });
+                    
+                    const isDupEmail = users.some(u => u.email.toLowerCase() === addUserForm.email.trim().toLowerCase());
+                    if (isDupEmail) {
+                      return setNoticeModal({
+                        isOpen: true,
+                        title: 'Duplicate User Email',
+                        message: `A user account with email "${addUserForm.email.trim()}" is already registered.`,
+                        variant: 'danger'
+                      });
+                    }
+
                     addUser(addUserForm);
                     setUserSaved(true);
                     setAddUserForm({ firstName: '', lastName: '', email: '', passwordHash: '', contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003', status: 'Active', hospitalId: '' });
@@ -3486,27 +3551,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Ward / Department</label>
-                  <input
-                    type="text"
-                    value={createIssuanceForm.ward}
-                    onChange={e => setCreateIssuanceForm(f => ({ ...f, ward: e.target.value }))}
-                    placeholder="e.g. ICU, ER"
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Clinical Diagnosis</label>
-                  <input
-                    type="text"
-                    value={createIssuanceForm.diagnosis}
-                    onChange={e => setCreateIssuanceForm(f => ({ ...f, diagnosis: e.target.value }))}
-                    placeholder="e.g. Severe Anemia"
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1">Clinical Diagnosis</label>
+                <input
+                  type="text"
+                  value={createIssuanceForm.diagnosis}
+                  onChange={e => setCreateIssuanceForm(f => ({ ...f, diagnosis: e.target.value }))}
+                  placeholder="e.g. Severe Anemia"
+                  className="w-full border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-slate-900 outline-none bg-white font-medium"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

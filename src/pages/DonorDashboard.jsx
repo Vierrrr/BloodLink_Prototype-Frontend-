@@ -798,16 +798,6 @@ export default function DonorDashboard() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Room / Ward</label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Ward 4B, Room 201" 
-                              className="w-full border border-slate-200 rounded-lg px-3.5 py-2.5 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition outline-none bg-slate-50/45"
-                              value={reqForm.ward}
-                              onChange={(e) => setReqForm({ ...reqForm, ward: e.target.value })}
-                            />
-                          </div>
-                          <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Hospital Request Slip ID</label>
                             <input 
                               type="text" 

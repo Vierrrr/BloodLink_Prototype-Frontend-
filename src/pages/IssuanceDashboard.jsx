@@ -443,7 +443,6 @@ export default function IssuanceDashboard() {
                           <td className="px-6 py-3.5 font-mono font-bold text-slate-400">{req.refNo}</td>
                           <td className="px-6 py-3.5">
                             <p className="font-bold text-slate-900">{req.hospital}</p>
-                            {req.ward && <p className="text-[10px] text-slate-400 font-normal mt-0.5">{req.ward}</p>}
                           </td>
                           <td className="px-6 py-3.5">
                             {items.length > 0 ? (
@@ -845,33 +844,7 @@ export default function IssuanceDashboard() {
                       </div>
                     </div>
 
-                    {/* Per Blood Type Breakdown (Overview only) */}
-                    {isOverview && (
-                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                          <div>
-                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Blood Type</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Summed across all hospitals & components — click a blood type to filter</p>
-                          </div>
-                        </div>
-                        <div className="p-5 grid grid-cols-4 md:grid-cols-8 gap-3">
-                          {BLOOD_TYPE_LIST.map(bt => {
-                            const rows = gf.filter(f => f.bloodTypeId === bt && f.weeksAhead === 1);
-                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
-                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
-                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
-                            return (
-                              <button key={bt} onClick={() => { setFcBloodType(bt); setRecBloodType(bt); }}
-                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 hover:border-[#C21C24] hover:bg-rose-50 transition cursor-pointer group">
-                                <span className="w-10 h-10 rounded-full bg-rose-50 border border-rose-100 text-[#C21C24] font-black text-[11px] flex items-center justify-center group-hover:bg-[#C21C24] group-hover:text-white transition font-mono">{bt}</span>
-                                <span className="font-extrabold text-slate-900 text-sm">{total.toFixed(0)}</span>
-                                <span className="text-[9px] text-slate-400 font-semibold">{pct}% of total</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+
 
                     {/* Per Hospital Breakdown (Overview only) */}
                     {isOverview && (
@@ -1205,12 +1178,6 @@ export default function IssuanceDashboard() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Ward / Location</label>
-                    <input type="text" name="ward" value={form.ward} onChange={handleFormChange}
-                      placeholder="e.g. Ward 4B, Room 201"
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none" />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1317,12 +1284,6 @@ export default function IssuanceDashboard() {
                   <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Date Needed</p>
                   <p className="font-semibold text-slate-800">{viewingReq.dateNeeded || '—'}</p>
                 </div>
-                {viewingReq.ward && (
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Ward / Location</p>
-                    <p className="font-semibold text-slate-800">{viewingReq.ward}</p>
-                  </div>
-                )}
                 {viewingReq.contactPerson && (
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Contact Person</p>
