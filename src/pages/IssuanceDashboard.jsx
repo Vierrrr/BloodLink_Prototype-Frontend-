@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
+import spmcLogo from '../assets/bloodlinks_logo/spmc-logo.png';
+import prcLogo from '../assets/bloodlinks_logo/prc-logo.png';
+import snbcLogo from '../assets/bloodlinks_logo/snbc-removebg-preview.png';
+import davaoLogo from '../assets/bloodlinks_logo/davao-logo.png';
 
 const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
 const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -847,42 +851,58 @@ export default function IssuanceDashboard() {
 
 
                     {/* Per Hospital Breakdown (Overview only) */}
-                    {isOverview && (
-                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100">
-                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
-                          <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                          {(hospitals || []).map(hosp => {
-                            const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
-                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
-                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
-                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
-                            const barW = allTotal ? (total / allTotal) * 100 : 0;
-                            return (
-                              <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
-                                className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
-                                <div className="w-36 flex-shrink-0">
-                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
-                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
-                                </div>
-                                <div className="flex-1">
-                                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
+                    {isOverview && (() => {
+                      const getHospLogo = (name) => {
+                        const n = name.toLowerCase();
+                        if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
+                        if (n.includes('red cross') || n.includes('prc')) return prcLogo;
+                        if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
+                        return davaoLogo;
+                      };
+
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                          <div className="px-6 py-4 border-b border-slate-100">
+                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {(hospitals || []).map(hosp => {
+                              const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                              const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                              const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                              const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                              const barW = allTotal ? (total / allTotal) * 100 : 0;
+                              const logoImg = getHospLogo(hosp.name);
+
+                              return (
+                                <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
+                                  className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
+                                  {/* Actual Hospital PNG Logo */}
+                                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs flex-shrink-0">
+                                    <img src={logoImg} alt={hosp.name} className="w-full h-full object-contain" />
                                   </div>
-                                </div>
-                                <div className="w-20 text-right flex-shrink-0">
-                                  <span className="font-extrabold text-slate-900 font-mono text-sm">{total.toFixed(0)}</span>
-                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
-                                </div>
-                                <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
-                              </button>
-                            );
-                          })}
+                                  <div className="w-44 flex-shrink-0">
+                                    <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
+                                    </div>
+                                  </div>
+                                  <div className="w-20 text-right flex-shrink-0">
+                                    <span className="font-extrabold text-slate-900 font-mono text-sm">{total.toFixed(0)}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Forecast Records Table — with independent inline filters */}
                     {(() => {

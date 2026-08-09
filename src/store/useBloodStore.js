@@ -162,9 +162,118 @@ const initialLabTestResults = [
 ];
 
 const initialBloodInventory = [
-  { unitId: 'BU-2026-001', donationId: 'DON-001', bloodTypeId: 'O+', componentId: 'PRBC', collectionDate: '2026-03-10', expirationDate: '2026-04-21', quantity: 450, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' },
-  { unitId: 'BU-2026-002', donationId: 'DON-002', bloodTypeId: 'A+', componentId: 'Platelet Concentrate', collectionDate: '2026-06-15', expirationDate: '2026-07-20', quantity: 250, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' },
-  { unitId: 'BU-2026-003', donationId: 'DON-003', bloodTypeId: 'B-', componentId: 'FFP', collectionDate: '2026-05-20', expirationDate: '2026-11-20', quantity: 300, safetyStatus: 'Cleared', intendedUse: 'Transfusable', inventoryStatus: 'Available', recordedBy: 'USR-004' }
+  // O+ (25 units)
+  ...Array.from({ length: 25 }, (_, i) => ({
+    unitId: `BU-2026-O+-${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-001`,
+    bloodTypeId: 'O+',
+    componentId: 'PRBC',
+    collectionDate: '2026-03-10',
+    expirationDate: '2026-04-21',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // A+ (9 units)
+  ...Array.from({ length: 9 }, (_, i) => ({
+    unitId: `BU-2026-A+-${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-002`,
+    bloodTypeId: 'A+',
+    componentId: 'PRBC',
+    collectionDate: '2026-06-15',
+    expirationDate: '2026-07-20',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // B+ (9 units)
+  ...Array.from({ length: 9 }, (_, i) => ({
+    unitId: `BU-2026-B+-${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-003`,
+    bloodTypeId: 'B+',
+    componentId: 'PRBC',
+    collectionDate: '2026-05-20',
+    expirationDate: '2026-06-25',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // AB+ (4 units)
+  ...Array.from({ length: 4 }, (_, i) => ({
+    unitId: `BU-2026-AB+-${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-001`,
+    bloodTypeId: 'AB+',
+    componentId: 'PRBC',
+    collectionDate: '2026-04-05',
+    expirationDate: '2026-05-10',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // O- (4 units)
+  ...Array.from({ length: 4 }, (_, i) => ({
+    unitId: `BU-2026-O--${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-001`,
+    bloodTypeId: 'O-',
+    componentId: 'PRBC',
+    collectionDate: '2026-01-15',
+    expirationDate: '2026-02-20',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // A- (2 units)
+  ...Array.from({ length: 2 }, (_, i) => ({
+    unitId: `BU-2026-A--${String(i + 1).padStart(3, '0')}`,
+    donationId: `DON-002`,
+    bloodTypeId: 'A-',
+    collectionDate: '2026-06-25',
+    expirationDate: '2026-07-30',
+    componentId: 'PRBC',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  })),
+  // B- (1 unit)
+  {
+    unitId: 'BU-2026-B--001',
+    donationId: 'DON-003',
+    bloodTypeId: 'B-',
+    componentId: 'PRBC',
+    collectionDate: '2026-05-20',
+    expirationDate: '2026-06-25',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  },
+  // AB- (1 unit)
+  {
+    unitId: 'BU-2026-AB--001',
+    donationId: 'DON-001',
+    bloodTypeId: 'AB-',
+    componentId: 'PRBC',
+    collectionDate: '2026-04-05',
+    expirationDate: '2026-05-10',
+    quantity: 450,
+    safetyStatus: 'Cleared',
+    intendedUse: 'Transfusable',
+    inventoryStatus: 'Available',
+    recordedBy: 'USR-004'
+  }
 ];
 
 const initialRecommendations = [
@@ -1479,7 +1588,7 @@ export const useBloodStore = create(
     }),
     { 
       name: 'bloodlink-dvo-store',
-      version: 9,
+      version: 10,
       migrate: () => {
         return undefined;
       }

@@ -37,6 +37,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
+import spmcLogo from '../assets/bloodlinks_logo/spmc-logo.png';
+import prcLogo from '../assets/bloodlinks_logo/prc-logo.png';
+import snbcLogo from '../assets/bloodlinks_logo/snbc-removebg-preview.png';
+import davaoLogo from '../assets/bloodlinks_logo/davao-logo.png';
 import ConfirmationModal from '../components/ConfirmationModal';
 import SuccessModal from '../components/SuccessModal';
 const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -1976,89 +1980,106 @@ export default function AdminDashboard() {
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
                       {/* ── LIST VIEW (no hospital selected) ── */}
-                      {!drilldownHospital && (
-                        <>
-                          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                              <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                                Granular Component Breakdown — Next Week
-                              </h3>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                Select a hospital to view its full demand breakdown by blood type &amp; component
-                              </p>
+                      {!drilldownHospital && (() => {
+                        const getHospLogo = (name) => {
+                          const n = name.toLowerCase();
+                          if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
+                          if (n.includes('red cross') || n.includes('prc')) return prcLogo;
+                          if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
+                          return davaoLogo;
+                        };
+
+                        return (
+                          <>
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                                  Granular Component Breakdown — Next Week
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Select a hospital to view its full demand breakdown by blood type &amp; component
+                                </p>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-mono bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                                {hospitals.length} hospitals registered
+                              </span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
-                              {hospitals.length} hospitals registered
-                            </span>
-                          </div>
 
-                          <div className="divide-y divide-slate-100">
-                            {hospitals.map((hosp, idx) => {
-                              const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
-                              const totalBags = rows.reduce((s, f) => s + f.predictedDemand, 0);
-                              const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
-                              const pct = allTotal ? Math.round((totalBags / allTotal) * 100) : 0;
-                              const barW = allTotal ? (totalBags / allTotal) * 100 : 0;
-                              const highestComp = rows.length ? rows.reduce((a, b) => b.predictedDemand > a.predictedDemand ? b : a, rows[0]) : null;
-                              const isRising = rows.some(f => f.slope > 0);
-                              const isFalling = rows.every(f => f.slope < 0);
-                              return (
-                                <button
-                                  key={hosp.id}
-                                  onClick={() => setDrilldownHospital(hosp)}
-                                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-indigo-50/40 transition text-left group"
-                                >
-                                  {/* Rank badge */}
-                                  <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-black text-slate-500 flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition">
-                                    {idx + 1}
-                                  </div>
+                            <div className="divide-y divide-slate-100">
+                              {hospitals.map((hosp, idx) => {
+                                const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                                const totalBags = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                                const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                                const pct = allTotal ? Math.round((totalBags / allTotal) * 100) : 0;
+                                const barW = allTotal ? (totalBags / allTotal) * 100 : 0;
+                                const highestComp = rows.length ? rows.reduce((a, b) => b.predictedDemand > a.predictedDemand ? b : a, rows[0]) : null;
+                                const isRising = rows.some(f => f.slope > 0);
+                                const isFalling = rows.every(f => f.slope < 0);
+                                const logoImg = getHospLogo(hosp.name);
 
-                                  {/* Name + ID */}
-                                  <div className="w-48 flex-shrink-0">
-                                    <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-700 transition truncate">{hosp.name.split('(')[0].trim()}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
-                                  </div>
-
-                                  {/* Progress bar */}
-                                  <div className="flex-1">
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                      <div className="h-full bg-indigo-500 rounded-full transition-all group-hover:bg-indigo-600" style={{ width: `${barW}%` }} />
+                                return (
+                                  <button
+                                    key={hosp.id}
+                                    onClick={() => setDrilldownHospital(hosp)}
+                                    className="w-full flex items-center gap-4 px-6 py-4 hover:bg-indigo-50/40 transition text-left group"
+                                  >
+                                    {/* Rank badge */}
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-black text-slate-500 flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition">
+                                      {idx + 1}
                                     </div>
-                                    {highestComp && (
-                                      <p className="text-[9px] text-slate-400 mt-1">
-                                        Top demand: <span className="font-bold text-slate-600">{highestComp.bloodTypeId} {highestComp.componentId}</span>
-                                      </p>
-                                    )}
-                                  </div>
 
-                                  {/* Trend */}
-                                  <div className="flex-shrink-0">
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                      isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                      isFalling ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                      'bg-slate-50 border-slate-200 text-slate-500'
-                                    }`}>
-                                      {isRising ? '↑ Rising' : isFalling ? '↓ Falling' : '→ Stable'}
-                                    </span>
-                                  </div>
+                                    {/* Hospital Actual Logo PNG */}
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs flex-shrink-0">
+                                      <img src={logoImg} alt={hosp.name} className="w-full h-full object-contain" />
+                                    </div>
 
-                                  {/* Bag count */}
-                                  <div className="w-24 text-right flex-shrink-0">
-                                    <span className="font-black text-indigo-600 font-mono text-base">{totalBags}</span>
-                                    <span className="text-[10px] text-slate-400 ml-1">bags</span>
-                                    <p className="text-[9px] text-slate-400">{pct}% of total</p>
-                                  </div>
+                                    {/* Name + ID */}
+                                    <div className="w-48 flex-shrink-0">
+                                      <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-700 transition truncate">{hosp.name.split('(')[0].trim()}</p>
+                                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                    </div>
 
-                                  {/* Arrow */}
-                                  <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
+                                    {/* Progress bar */}
+                                    <div className="flex-1">
+                                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-indigo-500 rounded-full transition-all group-hover:bg-indigo-600" style={{ width: `${barW}%` }} />
+                                      </div>
+                                      {highestComp && (
+                                        <p className="text-[9px] text-slate-400 mt-1">
+                                          Top demand: <span className="font-bold text-slate-600">{highestComp.bloodTypeId} {highestComp.componentId}</span>
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {/* Trend */}
+                                    <div className="flex-shrink-0">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                        isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                        isFalling ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                        'bg-slate-50 border-slate-200 text-slate-500'
+                                      }`}>
+                                        {isRising ? '↑ Rising' : isFalling ? '↓ Falling' : '→ Stable'}
+                                      </span>
+                                    </div>
+
+                                    {/* Bag count */}
+                                    <div className="w-24 text-right flex-shrink-0">
+                                      <span className="font-black text-indigo-600 font-mono text-base">{totalBags}</span>
+                                      <span className="text-[10px] text-slate-400 ml-1">bags</span>
+                                      <p className="text-[9px] text-slate-400">{pct}% of total</p>
+                                    </div>
+
+                                    {/* Arrow */}
+                                    <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      })()}
 
                       {/* ── DRILLDOWN VIEW (hospital selected) ── */}
                       {drilldownHospital && (() => {
@@ -2068,6 +2089,15 @@ export default function AdminDashboard() {
                           const typeRows = hospRows.filter(f => f.bloodTypeId === bt);
                           return { bt, total: typeRows.reduce((s, f) => s + f.predictedDemand, 0), rows: typeRows };
                         }).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+
+                        const getHospLogo = (name) => {
+                          const n = name.toLowerCase();
+                          if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
+                          if (n.includes('red cross') || n.includes('prc')) return prcLogo;
+                          if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
+                          return davaoLogo;
+                        };
+                        const logoImg = getHospLogo(drilldownHospital.name);
 
                         return (
                           <>
@@ -2083,9 +2113,9 @@ export default function AdminDashboard() {
                                   </svg>
                                 </button>
                                 
-                                {/* Hospital Logo Badge */}
-                                <div className="w-10 h-10 rounded-xl bg-indigo-600 border border-indigo-700 flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                                  <Building2 className="w-5 h-5" />
+                                {/* Actual Hospital PNG Logo */}
+                                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-sm flex-shrink-0">
+                                  <img src={logoImg} alt={drilldownHospital.name} className="w-full h-full object-contain" />
                                 </div>
 
                                 <div>
