@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useBloodStore } from '../store/useBloodStore';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,6 +32,8 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   LogOut,
   Calendar,
   X
@@ -45,6 +48,12 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import SuccessModal from '../components/SuccessModal';
 const BLOOD_TYPES = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const COMPONENTS = ['PRBC', 'Platelet Concentrate', 'FFP', 'Cryoprecipitate', 'Cryosupernate'];
+
+const SPRING = {
+  type: 'spring',
+  bounce: 0.55,
+  duration: 0.8,
+};
 
 export default function AdminDashboard() {
   // Zustand State
@@ -110,6 +119,9 @@ export default function AdminDashboard() {
 
   // Local UI State
   const [tab, setTab] = useState('dashboard');
+  const sidebarCollapsed = useBloodStore((state) => state.isSidebarCollapsed);
+  const toggleSidebar = useBloodStore((state) => state.toggleSidebar);
+  const [railTip, setRailTip] = useState(null);
 
   // Donation Events (Table 6) modal state
   const [showEventModal, setShowEventModal] = useState(false);
@@ -169,6 +181,7 @@ export default function AdminDashboard() {
 
   // Super Admin: Add System User modal
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [addUserForm, setAddUserForm] = useState({
     firstName: '', lastName: '', email: '', passwordHash: '',
     contactNumber: '', role: 'Registry Staff', roleId: 'ROLE-003',
@@ -198,6 +211,13 @@ export default function AdminDashboard() {
 
   // Generic notice/alert modal (replaces alert())
   const [noticeModal, setNoticeModal] = useState({ isOpen: false, title: '', message: '', variant: 'warning' });
+
+  // Reserves bar fill-in animation trigger
+  const [barsAnimated, setBarsAnimated] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setBarsAnimated(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
   // Admin-level SMS recall confirm + success modals
   const [adminRecallConfirm, setAdminRecallConfirm] = useState({ isOpen: false, donorId: '', donorName: '', isBulk: false, eligibleCount: 0, action: null });
   const [adminRecallSuccess, setAdminRecallSuccess] = useState({ isOpen: false, message: '' });
@@ -556,132 +576,162 @@ export default function AdminDashboard() {
     setTab('hospital_history');
   };
 
+  const handleToggleSidebar = () => {
+    toggleSidebar();
+    setRailTip(null);
+  };
+
+  const showRailTip = (label) => (event) => {
+    if (!sidebarCollapsed) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setRailTip({ label, top: rect.top + rect.height / 2 });
+  };
+
+  const hideRailTip = () => setRailTip(null);
+
+  const renderNavButton = ({ id, label, icon: Icon, badge }) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setTab(id)}
+      onMouseEnter={showRailTip(label)}
+      onMouseLeave={hideRailTip}
+      onFocus={showRailTip(label)}
+      onBlur={hideRailTip}
+      aria-label={label}
+      aria-current={tab === id ? 'page' : undefined}
+      className={`w-full text-left nav-link ${tab === id ? 'active' : ''}`}
+    >
+      <Icon className="nav-icon" />
+      <span className="sidebar-copy">{label}</span>
+      {badge}
+    </button>
+  );
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
 
       {/* SIDEBAR NAVIGATION (CLEAN SAAS DIVIDER STYLE) */}
-      <aside className="sidebar flex flex-col justify-between border-r border-slate-200 bg-white">
-        <div>
-          {/* Logo Section */}
-          <div className="px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
-              <div>
-                <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-slate-500 text-[10px] font-bold">Center Portal</p>
+      <aside
+        className={`sidebar flex flex-col justify-between border-r border-slate-200 bg-white ${sidebarCollapsed ? 'is-collapsed' : ''}`}
+        aria-label="Center portal navigation"
+      >
+        <div id="admin-sidebar" className="sidebar-inner">
+          <div>
+            {/* Logo Section */}
+            <div className={`py-5 border-b border-slate-100 ${sidebarCollapsed ? 'px-3' : 'px-6'}`}>
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className={`flex items-center min-w-0 ${sidebarCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
+                  <img src={bloodlinkLogo} alt="BloodLink Davao" className="h-10 w-auto object-contain flex-shrink-0" />
+                  <div className="sidebar-brand-copy min-w-0">
+                    <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
+                    <p className="text-slate-500 text-[10px] font-bold">Center Portal</p>
+                  </div>
+                </div>
+                {!sidebarCollapsed && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer flex-shrink-0"
+                    title="Collapse sidebar"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+              {sidebarCollapsed && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer"
+                    title="Expand sidebar"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* User Identity Panel */}
-          <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
-            <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Facility Desk</p>
-            <p className="text-slate-800 font-bold text-xs">SPMC Blood Production</p>
-            <p className="text-slate-500 text-[10px] font-medium">Operations Desk</p>
-          </div>
-
-          {/* Sidebar Nav Links */}
-          <nav className="flex-1 py-2 overflow-y-auto">
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">General</p>
-
-            <button onClick={() => setTab('dashboard')} className={`w-full text-left nav-link ${tab === 'dashboard' ? 'active' : ''}`}>
-              <Database className="nav-icon" />
-              <span>Dashboard</span>
-            </button>
-
-            <button onClick={() => setTab('users')} className={`w-full text-left nav-link ${tab === 'users' ? 'active' : ''}`}>
-              <UserCheck className="nav-icon" />
-              <span>User Management</span>
-            </button>
-
-            <button onClick={() => setTab('donors')} className={`w-full text-left nav-link ${tab === 'donors' ? 'active' : ''}`}>
-              <Users className="nav-icon" />
-              <span>Donor Management</span>
-            </button>
-
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Inventory & Issuance</p>
-
-            <button onClick={() => setTab('inventory')} className={`w-full text-left nav-link ${tab === 'inventory' ? 'active' : ''}`}>
-              <Heart className="nav-icon" />
-              <span>Blood Inventory</span>
-              {criticalCount > 0 && (
-                <span className="ml-auto bg-[#C21C24] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                  {criticalCount}
-                </span>
-              )}
-            </button>
-
-            <button onClick={() => setTab('issuance')} className={`w-full text-left nav-link ${tab === 'issuance' ? 'active' : ''}`}>
-              <FileText className="nav-icon" />
-              <span>Blood Issuance</span>
-              {pendingRequests > 0 && (
-                <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                  {pendingRequests}
-                </span>
-              )}
-            </button>
-
-            <button onClick={() => setTab('hospitals')} className={`w-full text-left nav-link ${tab === 'hospitals' ? 'active' : ''}`}>
-              <Building2 className="nav-icon" />
-              <span>Hospital Management</span>
-            </button>
-
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Distribution</p>
-
-            <button onClick={() => setTab('forecasting')} className={`w-full text-left nav-link ${tab === 'forecasting' ? 'active' : ''}`}>
-              <Activity className="nav-icon" />
-              <span>Demand Forecasting</span>
-            </button>
-
-            <button onClick={() => setTab('distribution')} className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}>
-              <Map className="nav-icon" />
-              <span>Distribution Recommendation:</span>
-            </button>
-
-            <button onClick={() => setTab('hospital_history')} className={`w-full text-left nav-link ${tab === 'hospital_history' ? 'active' : ''}`}>
-              <ClipboardList className="nav-icon" />
-              <span>Distribution Summary</span>
-            </button>
-
-            <button onClick={() => setTab('recall')} className={`w-full text-left nav-link ${tab === 'recall' ? 'active' : ''}`}>
-              <RefreshCw className="nav-icon" />
-              <span>Donor Recall</span>
-            </button>
-
-            <button onClick={() => setTab('donation_events')} className={`w-full text-left nav-link ${tab === 'donation_events' ? 'active' : ''}`}>
-              <Calendar className="nav-icon" />
-              <span>Donation Events</span>
-            </button>
-
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Analytics</p>
-
-            <button onClick={() => setTab('reports')} className={`w-full text-left nav-link ${tab === 'reports' ? 'active' : ''}`}>
-              <ClipboardList className="nav-icon" />
-              <span>Reports</span>
-            </button>
-
-            {isSuperAdmin && (
-              <button onClick={() => setTab('audit_logs')} className={`w-full text-left nav-link ${tab === 'audit_logs' ? 'active' : ''}`}>
-                <FileText className="nav-icon" />
-                <span>Audit Logs</span>
-              </button>
+            {/* User Identity Panel */}
+            {!sidebarCollapsed && (
+              <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
+                <div className="sidebar-desk">
+                  <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Facility Desk</p>
+                  <p className="text-slate-800 font-bold text-xs">SPMC Blood Production</p>
+                  <p className="text-slate-500 text-[10px] font-medium">Operations Desk</p>
+                </div>
+              </div>
             )}
 
-          </nav>
-        </div>
+            {/* Sidebar Nav Links */}
+            <nav className="flex-1 py-2">
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">General</p>
+              {renderNavButton({ id: 'dashboard', label: 'Dashboard', icon: Database })}
+              {renderNavButton({ id: 'users', label: 'User Management', icon: UserCheck })}
+              {renderNavButton({ id: 'donors', label: 'Donor Management', icon: Users })}
 
-        {/* Sidebar Footer */}
-        <div className="px-4 py-4 border-t border-slate-100 text-xs text-slate-400">
-          <p className="font-mono text-[10px]">Portal v2.4.0</p>
-          <div className="flex items-center gap-1 mt-1 text-emerald-600 font-bold">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-            <span>Gateway Connected</span>
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Inventory & Issuance</p>
+              {renderNavButton({
+                id: 'inventory',
+                label: 'Blood Inventory',
+                icon: Heart,
+                badge: criticalCount > 0 && (
+                  <span className="nav-badge ml-auto bg-[#C21C24] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    {criticalCount}
+                  </span>
+                )
+              })}
+              {renderNavButton({
+                id: 'issuance',
+                label: 'Blood Issuance',
+                icon: FileText,
+                badge: pendingRequests > 0 && (
+                  <span className="nav-badge ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    {pendingRequests}
+                  </span>
+                )
+              })}
+              {renderNavButton({ id: 'hospitals', label: 'Hospital Management', icon: Building2 })}
+
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Distribution</p>
+              {renderNavButton({ id: 'forecasting', label: 'Demand Forecasting', icon: Activity })}
+              {renderNavButton({ id: 'distribution', label: 'Distribution Recommendation:', icon: Map })}
+              {renderNavButton({ id: 'hospital_history', label: 'Distribution Summary', icon: ClipboardList })}
+              {renderNavButton({ id: 'recall', label: 'Donor Recall', icon: RefreshCw })}
+              {renderNavButton({ id: 'donation_events', label: 'Donation Events', icon: Calendar })}
+
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-4 mb-1 tracking-widest">Analytics</p>
+              {renderNavButton({ id: 'reports', label: 'Reports', icon: ClipboardList })}
+              {isSuperAdmin && renderNavButton({ id: 'audit_logs', label: 'Audit Logs', icon: FileText })}
+            </nav>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className={`py-4 border-t border-slate-100 text-xs text-slate-400 ${sidebarCollapsed ? 'px-2 flex justify-center' : 'px-4'}`}>
+            {sidebarCollapsed ? (
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="Gateway Connected" />
+            ) : (
+              <div className="sidebar-foot-copy">
+                <p className="font-mono text-[10px]">Portal v2.4.0</p>
+                <div className="flex items-center gap-1 mt-1 text-emerald-600 font-bold">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  <span>Gateway Connected</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </aside>
 
+      {railTip && (
+        <div className="sidebar-rail-tip" style={{ top: railTip.top }} role="tooltip">
+          {railTip.label}
+        </div>
+      )}
+
       {/* MAIN CONTENT WORKSPACE */}
-      <div className="content-area bg-slate-50/50">
+      <div className={`content-area bg-slate-50/50 ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
 
         {/* Top Header Bar */}
         <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-20">
@@ -703,7 +753,7 @@ export default function AdminDashboard() {
             <Link
               to="/"
               title="Logout"
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </Link>
@@ -749,40 +799,74 @@ export default function AdminDashboard() {
                   <div>
                     <h3 className="font-bold text-slate-900 text-sm mb-5 tracking-tight">Active Reserves vs Safety Thresholds</h3>
                     <div className="space-y-4">
-                      {inventory.map((blood) => (
-                        <div key={blood.type} className="flex items-center gap-4 text-xs font-semibold">
-                          <span className="w-10 font-bold text-slate-900">{blood.type}</span>
-                          <div className="flex-grow bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                            <div
-                              className={`h-2.5 rounded-full transition-all ${blood.status === 'critical' ? 'bg-[#C21C24]' : blood.status === 'low' ? 'bg-amber-400' : 'bg-emerald-500'
-                                }`}
-                              style={{ width: `${Math.min((blood.units / (blood.threshold * 2.5)) * 100, 100)}%` }}
-                            ></div>
-                          </div>
-                          <span className={`w-16 text-right font-bold text-slate-800`}>{blood.units} units</span>
-                          <span className={`w-20 text-[10px] font-bold px-2 py-0.5 rounded text-center border ${blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24] pulse-red' :
-                              blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                      {inventory.map((blood, idx) => {
+                        const pct = Math.min((blood.units / (blood.threshold * 2.5)) * 100, 100);
+                        const thresholdPct = Math.min((blood.threshold / (blood.threshold * 2.5)) * 100, 100);
+                        const delay = `${idx * 0.08}s`;
+                        const isCritical = blood.status === 'critical';
+                        const isLow = blood.status === 'low';
+
+                        const shimmerClass = isCritical
+                          ? 'bar-shimmer bar-shimmer-red'
+                          : isLow
+                          ? 'bar-shimmer bar-shimmer-amber'
+                          : 'bar-shimmer bar-shimmer-emerald';
+
+                        return (
+                          <div key={blood.type} className="flex items-center gap-4 text-xs font-semibold">
+                            {/* Status live dot */}
+                            <div className="relative flex items-center justify-center w-3 h-3 flex-shrink-0">
+                              {isCritical && (
+                                <span className="ping-ring absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                              )}
+                              {isLow && (
+                                <span className="ping-ring absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" style={{ animationDuration: '1.8s' }} />
+                              )}
+                              <span className={`relative inline-flex rounded-full h-2 w-2 ${isCritical ? 'bg-[#C21C24]' : isLow ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                            </div>
+
+                            {/* Blood type label */}
+                            <span className="w-8 font-bold text-slate-900 text-xs font-mono">{blood.type}</span>
+
+                            {/* Progress bar track with threshold marker */}
+                            <div className="relative flex-grow bg-slate-100 rounded-full h-3 overflow-visible">
+                              {/* Animated fill bar — starts at 0, transitions to real % on mount */}
+                              <div
+                                className={`h-3 rounded-full ${shimmerClass}`}
+                                style={{
+                                  width: barsAnimated ? `${pct}%` : '0%',
+                                  transition: `width 1s cubic-bezier(0.34, 1.08, 0.64, 1) ${delay}`,
+                                }}
+                              />
+                              {/* Threshold marker tick */}
+                              <div
+                                className="threshold-tick absolute top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-slate-400/70 z-10"
+                                style={{ left: `${thresholdPct}%` }}
+                                title={`Safety threshold: ${blood.threshold} units`}
+                              />
+                            </div>
+
+                            {/* Unit count */}
+                            <span className="w-16 text-right font-bold text-slate-800">{blood.units} units</span>
+
+                            {/* Status badge */}
+                            <span className={`w-20 text-[10px] font-bold px-2 py-0.5 rounded text-center border ${isCritical
+                              ? 'bg-rose-50 border-rose-100 text-[#C21C24] pulse-red'
+                              : isLow
+                              ? 'bg-amber-50 border-amber-100 text-amber-700'
+                              : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                             }`}>
-                            {blood.status === 'critical' ? 'Critical' : blood.status === 'low' ? 'Low' : 'Stable'}
-                          </span>
-                        </div>
-                      ))}
+                              {isCritical ? 'Critical' : isLow ? 'Low' : 'Stable'}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
                 {/* Right Side Info Cards */}
                 <div className="space-y-4">
-                  {/* Intentionally removed matching protocol button */}
-
-                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                    <h4 className="font-bold text-slate-900 text-xs mb-1 uppercase tracking-wider">Interval Scan Query</h4>
-                    <p className="text-slate-500 text-xs leading-relaxed mb-4">18 profiles completed their recovery rest periods today.</p>
-                    <button onClick={() => setTab('reeligibility')} className="w-full border border-slate-200 text-slate-650 hover:bg-slate-50 py-2 rounded-lg text-xs font-bold transition-all">
-                      Access Database Queries
-                    </button>
-                  </div>
-
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <h4 className="font-bold text-slate-900 text-xs mb-1 uppercase tracking-wider">Gateway Telemetry</h4>
                     <p className="text-slate-500 text-xs leading-relaxed mb-4">{smsLogs.length} matching alerts dispatched via Semaphore API today.</p>
@@ -836,7 +920,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${blood.status === 'critical' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                            blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          blood.status === 'low' ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                           }`}>
                           {blood.status === 'critical' ? 'CRITICAL' : blood.status === 'low' ? 'LOWSTOCK' : 'STABLE'}
                         </span>
@@ -1035,8 +1119,8 @@ export default function AdminDashboard() {
                               <td className="px-6 py-3.5 font-mono text-slate-500">{r.recallDate}</td>
                               <td className="px-6 py-3.5 text-center">
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${r.smsStatus === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                    r.smsStatus === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                      'bg-amber-50 border-amber-100 text-amber-700'
+                                  r.smsStatus === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                    'bg-amber-50 border-amber-100 text-amber-700'
                                   }`}>
                                   {r.smsStatus}
                                 </span>
@@ -1044,8 +1128,8 @@ export default function AdminDashboard() {
                               <td className="px-6 py-3.5 text-center">
                                 {r.donorResponse ? (
                                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${r.donorResponse === 'Committed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                      r.donorResponse === 'Declined' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                        'bg-slate-50 border-slate-200 text-slate-650'
+                                    r.donorResponse === 'Declined' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                      'bg-slate-50 border-slate-200 text-slate-650'
                                     }`}>
                                     {r.donorResponse}
                                   </span>
@@ -1100,8 +1184,8 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-[#C21C24] font-bold">YES</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${arrivedAtFacility
-                            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                            : 'bg-amber-50 border-amber-100 text-amber-700 animate-pulse'
+                          ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          : 'bg-amber-50 border-amber-100 text-amber-700 animate-pulse'
                           }`}>
                           {arrivedAtFacility ? 'Arrived at Facility' : 'Awaiting Arrival'}
                         </span>
@@ -1173,11 +1257,84 @@ export default function AdminDashboard() {
                     <p className="text-[10px] text-slate-400 mt-0.5">{users.length} system users registered</p>
                   </div>
                   {(isSuperAdmin || isAdministrator) && (
-                    <button
-                      onClick={() => setShowAddUserModal(true)}
-                      className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm cursor-pointer">
-                      <Plus className="w-4 h-4" /> Add System User
-                    </button>
+                    <div className="relative flex items-center justify-end min-h-[40px] w-full max-w-[520px]">
+                      {/* MAIN BUTTON */}
+                      <motion.button
+                        layout
+                        transition={SPRING}
+                        onClick={() => setSplitOpen(true)}
+                        className="absolute z-10 bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm cursor-pointer whitespace-nowrap"
+                        initial={false}
+                        animate={{
+                          scaleX: splitOpen ? 1.5 : 1,
+                          scaleY: splitOpen ? 0.9 : 1,
+                          opacity: splitOpen ? 0 : 1,
+                          filter: splitOpen ? 'blur(8px)' : 'blur(0px)',
+                          pointerEvents: splitOpen ? 'none' : 'auto',
+                        }}
+                      >
+                        <Plus className="w-4 h-4" /> Add System User
+                      </motion.button>
+
+                      {/* SPLIT ROW */}
+                      <motion.div
+                        layout
+                        transition={SPRING}
+                        className="absolute z-0 flex items-center justify-end gap-1.5"
+                        initial={false}
+                        animate={{
+                          scaleX: splitOpen ? 1 : 0.2,
+                          scaleY: splitOpen ? 1 : 0.9,
+                          opacity: splitOpen ? 1 : 0,
+                          filter: splitOpen ? 'blur(0px)' : 'blur(8px)',
+                          pointerEvents: splitOpen ? 'auto' : 'none',
+                        }}
+                      >
+                        {/* BACK BUTTON */}
+                        <motion.button
+                          onClick={() => setSplitOpen(false)}
+                          className="flex items-center justify-center rounded-lg bg-slate-100 border border-slate-200 p-2 text-slate-700 hover:bg-slate-200 hover:text-slate-900 transition shadow-sm cursor-pointer"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          title="Back"
+                        >
+                          <ChevronsLeft className="w-4 h-4" />
+                        </motion.button>
+
+                        {[
+                          { label: 'Registry', role: 'Registry Staff', roleId: 'ROLE-003' },
+                          { label: 'Blood Bank', role: 'Blood Bank Staff', roleId: 'ROLE-004' },
+                          { label: 'Issuance', role: 'Issuance Personnel', roleId: 'ROLE-005' },
+                          { label: 'Hospital', role: 'Hospital User', roleId: 'ROLE-006' },
+                          { label: 'Admin', role: 'Administrator', roleId: 'ROLE-002' },
+                          ...(isSuperAdmin ? [{ label: 'Super Admin', role: 'Super Admin', roleId: 'ROLE-001' }] : [])
+                        ].map((item, index) => (
+                          <motion.button
+                            key={index}
+                            onClick={() => {
+                              setAddUserForm({
+                                firstName: '',
+                                lastName: '',
+                                email: '',
+                                passwordHash: '',
+                                contactNumber: '',
+                                role: item.role,
+                                roleId: item.roleId,
+                                status: 'Active',
+                                hospitalId: ''
+                              });
+                              setShowAddUserModal(true);
+                              setSplitOpen(false);
+                            }}
+                            className="rounded-lg border border-slate-205 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-900 transition shadow-sm cursor-pointer whitespace-nowrap"
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                          >
+                            {item.label}
+                          </motion.button>
+                        ))}
+                      </motion.div>
+                    </div>
                   )}
                 </div>
                 <div className="overflow-x-auto">
@@ -1276,8 +1433,8 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setFlaggedStatus(!accountFlagged)}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border ${accountFlagged
-                      ? 'bg-amber-50 border-amber-200 text-amber-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-amber-50 border-amber-200 text-amber-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                 >
                   <ShieldAlert className="w-4 h-4" />
@@ -1324,8 +1481,8 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-3.5">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${d.name === 'Maria C. Santos' && accountFlagged
-                                ? 'bg-amber-50 border-amber-200 text-amber-700'
-                                : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                              ? 'bg-amber-50 border-amber-200 text-amber-700'
+                              : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                               }`}>
                               {d.name === 'Maria C. Santos' && accountFlagged ? 'Temporary Deferral' : 'Cleared'}
                             </span>
@@ -1428,9 +1585,9 @@ export default function AdminDashboard() {
                             {/* Status */}
                             <td className="px-5 py-3.5 text-center">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${log.status === 'Sent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                  log.status === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                    log.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                      'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                log.status === 'Failed' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                  log.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                    'bg-emerald-50 border-emerald-100 text-emerald-700'
                                 }`}>
                                 {log.status || 'Sent'}
                               </span>
@@ -1509,7 +1666,7 @@ export default function AdminDashboard() {
                       contactNumber: ''
                     });
                     setShowCreateIssuanceModal(true);
-                  }} className="bg-[#C21C24] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition flex items-center gap-2 shadow-sm cursor-pointer">
+                  }} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 shadow-sm cursor-pointer">
                     <Plus className="w-4 h-4" /> Create Issuance
                   </button>
                 </div>
@@ -1558,8 +1715,8 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${req.status === 'Pending' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                  req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                                    req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
+                                req.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                  req.status === 'Fulfilled' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-[#C21C24]'
                                 }`}>{req.status}</span>
                             </td>
                             <td className="px-6 py-4">
@@ -1633,14 +1790,14 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${h.type === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                                h.type === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                                  'bg-slate-50 border-slate-200 text-slate-600'
+                              h.type === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
+                                'bg-slate-50 border-slate-200 text-slate-600'
                               }`}>{h.type}</span>
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${h.registrationStatus === 'Active' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                h.registrationStatus === 'Suspended' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
-                                  'bg-amber-50 border-amber-100 text-amber-700'
+                              h.registrationStatus === 'Suspended' ? 'bg-rose-50 border-rose-100 text-[#C21C24]' :
+                                'bg-amber-50 border-amber-100 text-amber-700'
                               }`}>{h.registrationStatus || 'Pending'}</span>
                           </td>
                           <td className="px-6 py-4 text-slate-700">{h.contact}</td>
@@ -2053,11 +2210,10 @@ export default function AdminDashboard() {
 
                                     {/* Trend */}
                                     <div className="flex-shrink-0">
-                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                        isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
                                         isFalling ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                        'bg-slate-50 border-slate-200 text-slate-500'
-                                      }`}>
+                                          'bg-slate-50 border-slate-200 text-slate-500'
+                                        }`}>
                                         {isRising ? '↑ Rising' : isFalling ? '↓ Falling' : '→ Stable'}
                                       </span>
                                     </div>
@@ -2112,7 +2268,7 @@ export default function AdminDashboard() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                                   </svg>
                                 </button>
-                                
+
                                 {/* Actual Hospital PNG Logo */}
                                 <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-sm flex-shrink-0">
                                   <img src={logoImg} alt={drilldownHospital.name} className="w-full h-full object-contain" />
@@ -2137,7 +2293,7 @@ export default function AdminDashboard() {
                               {[
                                 { label: 'Blood Types', value: byType.length },
                                 { label: 'Components', value: [...new Set(hospRows.map(f => f.componentId))].length },
-                                { label: 'Highest Demand', value: hospRows.length ? hospRows.reduce((a,b) => b.predictedDemand > a.predictedDemand ? b : a, hospRows[0]) : null, render: v => v ? `${v.bloodTypeId} ${v.componentId}` : '—' },
+                                { label: 'Highest Demand', value: hospRows.length ? hospRows.reduce((a, b) => b.predictedDemand > a.predictedDemand ? b : a, hospRows[0]) : null, render: v => v ? `${v.bloodTypeId} ${v.componentId}` : '—' },
                                 { label: 'Rising Trends', value: hospRows.filter(f => f.slope > 0).length }
                               ].map((kpi, i) => (
                                 <div key={i} className="px-5 py-3 text-center">
@@ -2178,11 +2334,10 @@ export default function AdminDashboard() {
                                           </div>
                                           <span className="font-extrabold text-slate-800 font-mono text-sm w-8 text-right">{f.predictedDemand}</span>
                                           <span className="text-[9px] text-slate-400 w-16 text-right">±{f.lowerBound}–{f.upperBound}</span>
-                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-16 text-center ${
-                                            f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-16 text-center ${f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
                                             f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                            'bg-slate-50 border-slate-200 text-slate-500'
-                                          }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                              'bg-slate-50 border-slate-200 text-slate-500'
+                                            }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -2254,8 +2409,8 @@ export default function AdminDashboard() {
                               <td className="px-6 py-3 font-bold text-slate-900">{a.hospitalName}</td>
                               <td className="px-6 py-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${a.hospitalType === 'Government' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                                    a.hospitalType === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                                      'bg-slate-50 border-slate-200 text-slate-600'
+                                  a.hospitalType === 'Blood Bank' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
+                                    'bg-slate-50 border-slate-200 text-slate-600'
                                   }`}>{a.hospitalType}</span>
                               </td>
                               <td className="px-6 py-3 font-mono text-slate-600">{a.hospitalType === 'Government' ? '1.5×' : a.hospitalType === 'Blood Bank' ? '1.2×' : '1.0×'}</td>
@@ -2355,8 +2510,8 @@ export default function AdminDashboard() {
                                 document.getElementById('rec-filter-active').dispatchEvent(new Event('change', { bubbles: true }));
                               }}
                               className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition -mb-px ${activeFilter === f
-                                  ? 'border-indigo-600 text-indigo-600'
-                                  : 'border-transparent text-slate-400 hover:text-slate-600'
+                                ? 'border-indigo-600 text-indigo-600'
+                                : 'border-transparent text-slate-400 hover:text-slate-600'
                                 }`}
                             >
                               {f} <span className="ml-1 bg-slate-100 px-1 rounded font-mono">{counts[f]}</span>
@@ -2429,8 +2584,8 @@ export default function AdminDashboard() {
                                       {/* Status */}
                                       <td className="px-5 py-3 text-center">
                                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${rec.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                            rec.status === 'Rejected' ? 'bg-rose-50 text-[#C21C24] border-rose-100' :
-                                              'bg-amber-50 text-amber-700 border-amber-100'
+                                          rec.status === 'Rejected' ? 'bg-rose-50 text-[#C21C24] border-rose-100' :
+                                            'bg-amber-50 text-amber-700 border-amber-100'
                                           }`}>
                                           {rec.status}
                                         </span>
@@ -2681,8 +2836,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => setReportsTab('stock')}
                       className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${reportsTab === 'stock'
-                          ? 'bg-slate-900 text-white shadow-sm'
-                          : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
                         }`}
                     >
                       Daily Stock Summary
@@ -2690,8 +2845,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => setReportsTab('mbd')}
                       className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${reportsTab === 'mbd'
-                          ? 'bg-slate-900 text-white shadow-sm'
-                          : 'bg-slate-50 border border-slate-200 text-slate-655 hover:bg-slate-100'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-50 border border-slate-200 text-slate-655 hover:bg-slate-100'
                         }`}
                     >
                       MBD Collections Report
@@ -2739,10 +2894,10 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4 text-center text-slate-600 font-mono">{item.cryosup || 0}</td>
                               <td className="px-6 py-4 text-center">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.status === 'safe'
-                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                    : item.status === 'low'
-                                      ? 'bg-amber-50 border-amber-100 text-amber-700'
-                                      : 'bg-rose-50 border-rose-100 text-[#C21C24]'
+                                  ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                  : item.status === 'low'
+                                    ? 'bg-amber-50 border-amber-100 text-amber-700'
+                                    : 'bg-rose-50 border-rose-100 text-[#C21C24]'
                                   }`}>
                                   {item.status.toUpperCase()}
                                 </span>
@@ -3028,7 +3183,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => {
                   if (!hospitalForm.name.trim()) return setNoticeModal({ isOpen: true, title: 'Required Field Missing', message: 'Hospital name is required.', variant: 'warning' });
-                  
+
                   if (!editingHospital) {
                     const isDup = hospitals.some(h => h.name.toLowerCase() === hospitalForm.name.trim().toLowerCase());
                     if (isDup) {
@@ -3133,7 +3288,9 @@ export default function AdminDashboard() {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg modal-in" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white rounded-t-2xl">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrative Tool · Table 2: Users</p>
-              <h4 className="font-bold text-slate-900 text-sm tracking-tight">Register New System User</h4>
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight">
+                Register New {addUserForm.role === 'Registry Staff' ? 'Registry' : addUserForm.role === 'Blood Bank Staff' ? 'Blood Bank' : addUserForm.role === 'Issuance Personnel' ? 'Issuance' : addUserForm.role === 'Hospital User' ? 'Hospital' : addUserForm.role === 'Administrator' ? 'Admin' : 'Super Admin'}
+              </h4>
             </div>
             <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
               {userSaved && (
@@ -3173,32 +3330,7 @@ export default function AdminDashboard() {
                 <input type="text" value={addUserForm.contactNumber} onChange={e => setAddUserForm(f => ({ ...f, contactNumber: e.target.value }))} placeholder="e.g. +63 917 123 4567" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none bg-slate-50/50" />
               </div>
 
-              {/* role_id & role */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Assigned Role <span className="text-rose-500">*</span></label>
-                  <select
-                    value={addUserForm.role}
-                    onChange={e => {
-                      const roleMap = { 'Super Admin': 'ROLE-001', 'Administrator': 'ROLE-002', 'Registry Staff': 'ROLE-003', 'Blood Bank Staff': 'ROLE-004', 'Issuance Personnel': 'ROLE-005', 'Hospital User': 'ROLE-006' };
-                      setAddUserForm(f => ({ ...f, role: e.target.value, roleId: roleMap[e.target.value] || 'ROLE-003' }));
-                    }}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-50/50 outline-none focus:border-slate-800"
-                  >
-                    <option>Registry Staff</option>
-                    <option>Blood Bank Staff</option>
-                    <option>Issuance Personnel</option>
-                    <option>Hospital User</option>
-                    <option>Administrator</option>
-                    <option>Super Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Role ID (FK)</label>
-                  <input type="text" value={addUserForm.roleId} readOnly className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-100 text-slate-500 outline-none font-mono" />
-                  <p className="text-[9px] text-slate-400 mt-0.5">Auto-mapped from Table 1: Roles</p>
-                </div>
-              </div>
+
 
               {/* hospital_id — conditional */}
               {addUserForm.role === 'Hospital User' && (
@@ -3260,7 +3392,7 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => {
                     if (!addUserForm.firstName.trim() || !addUserForm.lastName.trim() || !addUserForm.email.trim()) return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'First name, last name, and email are required.', variant: 'warning' });
-                    
+
                     const isDupEmail = users.some(u => u.email.toLowerCase() === addUserForm.email.trim().toLowerCase());
                     if (isDupEmail) {
                       return setNoticeModal({
@@ -3279,7 +3411,7 @@ export default function AdminDashboard() {
                       setShowAddUserModal(false);
                     }, 1200);
                   }}
-                  className="flex-1 px-4 py-2.5 bg-purple-650 text-white rounded-lg hover:bg-purple-700 transition shadow-sm cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition shadow-sm cursor-pointer"
                 >Register User</button>
               </div>
             </div>
@@ -3351,7 +3483,7 @@ export default function AdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Role ID (FK)</label>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1">Role ID</label>
                   <input type="text" value={editUserForm.roleId} readOnly className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-slate-100 text-slate-500 outline-none font-mono" />
                 </div>
               </div>
@@ -3528,7 +3660,7 @@ export default function AdminDashboard() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto space-y-4 text-xs font-semibold text-slate-700">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3637,9 +3769,9 @@ export default function AdminDashboard() {
                   if (!f.hospitalId || !f.contactPerson.trim() || !f.contactNumber.trim()) {
                     return setNoticeModal({ isOpen: true, title: 'Required Fields Missing', message: 'Please fill in all required fields marked with *.', variant: 'warning' });
                   }
-                  
+
                   const targetHosp = hospitals.find(h => h.id === f.hospitalId);
-                  
+
                   // Check stock availability
                   const inventoryItem = inventory.find(i => i.type === f.bloodType);
                   if (!inventoryItem || inventoryItem.units < f.units) {
@@ -3675,7 +3807,7 @@ export default function AdminDashboard() {
                     component: f.component
                   });
                 }}
-                className="flex-1 py-2.5 bg-[#C21C24] hover:bg-[#A8181F] text-white rounded-lg transition shadow-sm cursor-pointer"
+                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-700 text-white rounded-lg transition shadow-sm cursor-pointer"
               >
                 Dispatch & Record
               </button>

@@ -887,7 +887,7 @@ export default function DonorDashboard() {
 
                       <button 
                         onClick={submitRequest}
-                        className="w-full bg-[#C21C24] text-white py-3 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all disabled:opacity-50 shadow-sm"
+                        className="w-full bg-[#C21C24] text-white py-3 rounded-full text-xs font-bold hover:bg-[#A8181F] transition-all disabled:opacity-50 shadow-sm"
                         disabled={!reqForm.patientName || !reqForm.patientBloodType || !reqForm.units || !reqForm.hospital || !reqForm.physician || !reqForm.bloodCenter || !reqForm.urgency || !reqForm.dateNeeded}
                       >
                         Submit Referral Request

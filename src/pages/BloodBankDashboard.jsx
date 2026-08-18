@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useBloodStore } from '../store/useBloodStore';
 import {
   Archive, Stethoscope, LogOut,
-  CheckCircle, XCircle, Droplets, Clock, Activity, AlertTriangle, Database, FileText, Plus, X, Tag
+  CheckCircle, XCircle, Droplets, Clock, Activity, AlertTriangle, Database, FileText, Plus, X, Tag,
+  ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -27,7 +28,7 @@ const emptyUnitForm = {
 };
 
 export default function BloodBankDashboard() {
-  const { donors, inventory, bloodRequests, approveRequest, rejectRequest, updateInventoryUnits, recordBloodUnit, bloodInventory, donations } = useBloodStore();
+  const { donors, inventory, bloodRequests, approveRequest, rejectRequest, updateInventoryUnits, recordBloodUnit, bloodInventory, donations, isSidebarCollapsed, toggleSidebar } = useBloodStore();
   const [tab, setTab] = useState('inventory'); // 'inventory' | 'requests'
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [unitForm, setUnitForm] = useState(emptyUnitForm);
@@ -60,72 +61,105 @@ export default function BloodBankDashboard() {
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
 
       {/* SIDEBAR NAVIGATION (consistent with AdminDashboard) */}
-      <aside className="sidebar flex flex-col justify-between border-r border-slate-200 bg-white">
-        <div>
-          {/* Logo Section */}
-          <div className="px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
-              <div>
-                <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-slate-500 text-[10px] font-bold">Blood Bank Portal</p>
+      <aside className={`sidebar flex flex-col justify-between border-r border-slate-200 bg-white ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
+        <div id="bank-sidebar" className="sidebar-inner w-full flex flex-col justify-between">
+          <div>
+            {/* Logo Section */}
+            <div className={`py-5 border-b border-slate-100 ${isSidebarCollapsed ? 'px-3' : 'px-6'}`}>
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className={`flex items-center min-w-0 ${isSidebarCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
+                  <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
+                  <div className="sidebar-brand-copy min-w-0">
+                    <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
+                    <p className="text-slate-500 text-[10px] font-bold">Blood Bank Portal</p>
+                  </div>
+                </div>
+                {!isSidebarCollapsed && (
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer flex-shrink-0"
+                    title="Collapse sidebar"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-            </div>
-          </div>
-
-          {/* User Identity Panel */}
-          <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
-            <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
-            <p className="text-slate-800 font-bold text-xs">Blood Bank Staff</p>
-            <p className="text-slate-500 text-[10px] font-medium">Inventory Management</p>
-          </div>
-
-          {/* Sidebar Nav Links */}
-          <nav className="flex-1 py-2 overflow-y-auto">
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">Main Modules</p>
-
-            <button
-              onClick={() => setTab('inventory')}
-              className={`w-full text-left nav-link ${tab === 'inventory' ? 'active' : ''}`}
-            >
-              <Droplets className="nav-icon" />
-              <span>Component Inventory</span>
-            </button>
-
-            <button
-              onClick={() => setTab('requests')}
-              className={`w-full text-left nav-link ${tab === 'requests' ? 'active' : ''}`}
-            >
-              <Stethoscope className="nav-icon" />
-              <span>Issuance Requests</span>
-              {pendingRequests.length > 0 && (
-                <span className="ml-auto bg-[#C21C24] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                  {pendingRequests.length}
-                </span>
+              {isSidebarCollapsed && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer"
+                    title="Expand sidebar"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
 
-            <button
-              onClick={() => setTab('distribution')}
-              className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}
-            >
-              <Activity className="nav-icon" />
-              <span>Distribution Recommendation</span>
-            </button>
-          </nav>
-        </div>
+            {/* User Identity Panel */}
+            {!isSidebarCollapsed && (
+              <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
+                <div className="sidebar-desk">
+                  <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
+                  <p className="text-slate-800 font-bold text-xs">Blood Bank Staff</p>
+                  <p className="text-slate-500 text-[10px] font-medium">Inventory Management</p>
+                </div>
+              </div>
+            )}
 
-        {/* Logout at bottom */}
-        <div className="p-4 border-t border-slate-100">
-          <Link to="/" className="w-full inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
-            <LogOut className="w-4 h-4" />
-            <span>Exit Dashboard</span>
-          </Link>
+            {/* Sidebar Nav Links */}
+            <nav className="flex-1 py-2 overflow-y-auto">
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">Main Modules</p>
+
+              <button
+                onClick={() => setTab('inventory')}
+                className={`w-full text-left nav-link ${tab === 'inventory' ? 'active' : ''}`}
+                title={isSidebarCollapsed ? "Component Inventory" : ""}
+              >
+                <Droplets className="nav-icon" />
+                <span className="sidebar-copy">Component Inventory</span>
+              </button>
+
+              <button
+                onClick={() => setTab('requests')}
+                className={`w-full text-left nav-link ${tab === 'requests' ? 'active' : ''}`}
+                title={isSidebarCollapsed ? "Issuance Requests" : ""}
+              >
+                <Stethoscope className="nav-icon" />
+                <span className="sidebar-copy">Issuance Requests</span>
+                {pendingRequests.length > 0 && (
+                  <span className="nav-badge ml-auto bg-[#C21C24] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    {pendingRequests.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setTab('distribution')}
+                className={`w-full text-left nav-link ${tab === 'distribution' ? 'active' : ''}`}
+                title={isSidebarCollapsed ? "Distribution Recommendation" : ""}
+              >
+                <Activity className="nav-icon" />
+                <span className="sidebar-copy">Distribution Recommendation</span>
+              </button>
+            </nav>
+          </div>
+
+          {/* Logout at bottom */}
+          <div className="p-4 border-t border-slate-100">
+            <Link to="/" className="w-full inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors" title="Exit Dashboard">
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              <span className="sidebar-copy">Exit Dashboard</span>
+            </Link>
+          </div>
         </div>
       </aside>
 
       {/* CONTENT AREA */}
-      <div className="content-area flex flex-col flex-1 h-screen bg-slate-50">
+      <div className={`content-area flex flex-col flex-1 h-screen bg-slate-50 ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
 
         {/* Top Header Bar */}
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
@@ -407,7 +441,7 @@ export default function BloodBankDashboard() {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handleIssue(req.refNo)}
-                                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-1 cursor-pointer"
+                                className="bg-slate-900 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-1 cursor-pointer"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" /> Issue Blood
                               </button>
@@ -700,7 +734,7 @@ export default function BloodBankDashboard() {
                   Cancel
                 </button>
                 <button type="submit"
-                  className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+                  className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-full shadow-sm transition-colors flex items-center gap-1.5">
                   <Database className="w-3.5 h-3.5" /> Commit Unit
                 </button>
               </div>
@@ -728,7 +762,7 @@ export default function BloodBankDashboard() {
 
             <button
               onClick={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
-              className="w-full bg-[#C21C24] hover:bg-[#A8181F] text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+              className="w-full bg-slate-900 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
             >
               Great, thank you!
             </button>

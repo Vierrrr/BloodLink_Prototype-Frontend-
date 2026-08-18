@@ -19,8 +19,10 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Geist', 'Instrument Sans', 'sans-serif'],
         display: ['Plus Jakarta Sans', 'sans-serif'],
+        accent: ['Bricolage Grotesque', 'sans-serif'],
+        mono: ['Geist Mono', 'monospace'],
       },
     },
   },

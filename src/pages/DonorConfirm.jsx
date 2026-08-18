@@ -188,7 +188,7 @@ export default function DonorConfirm() {
           >
             Go to My Dashboard
           </button>
-          <Link to="/" className="w-28 border border-slate-200 text-slate-650 hover:bg-slate-50 py-3 rounded-lg text-xs font-bold transition-all text-center">
+          <Link to="/" className="w-28 border border-slate-200 text-slate-650 hover:bg-slate-50 py-3 rounded-full text-xs font-bold transition-all text-center">
             Gateway
           </Link>
         </div>

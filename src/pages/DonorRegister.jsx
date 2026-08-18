@@ -420,7 +420,7 @@ export default function DonorRegister() {
                   <button 
                     onClick={submit} 
                     disabled={!form.consent} 
-                    className="inline-flex items-center gap-1.5 bg-[#C21C24] text-white px-8 py-3 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    className="inline-flex items-center gap-1.5 bg-[#C21C24] text-white px-8 py-3 rounded-full text-xs font-bold hover:bg-[#A8181F] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                   >
                     <Heart className="w-4 h-4 fill-white" />
                     <span>Register as Voluntary Donor</span>
@@ -450,7 +450,7 @@ export default function DonorRegister() {
               <button onClick={() => navigate('/donor/dashboard')} className="bg-[#C21C24] text-white px-6 py-2.5 rounded-lg text-xs font-bold hover:bg-[#A8181F] transition-all shadow-sm">
                 Open Donor Portal
               </button>
-              <Link to="/" className="border border-slate-200 text-slate-500 hover:bg-slate-50 px-6 py-2.5 rounded-lg text-xs font-bold transition-all text-center">
+              <Link to="/" className="border border-slate-200 text-slate-500 hover:bg-slate-50 px-6 py-2.5 rounded-full text-xs font-bold transition-all text-center">
                 Return Gateway
               </Link>
             </div>

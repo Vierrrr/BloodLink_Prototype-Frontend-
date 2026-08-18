@@ -5,7 +5,7 @@ import {
   LogOut, Plus, Clock,
   CheckCircle, XCircle, AlertTriangle, FileText,
   Droplets, X, Activity, Database, Shield, Trash2, ShoppingCart, Eye,
-  TrendingUp, Search, ChevronDown
+  TrendingUp, Search, ChevronDown, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bloodlinkLogo from '../assets/bloodlinks_logo/bloodlink-logo.png';
@@ -47,7 +47,9 @@ export default function IssuanceDashboard() {
     bloodIssuance,
     bloodIssuanceDetails,
     granularForecasts,
-    generateGranularForecast
+    generateGranularForecast,
+    isSidebarCollapsed,
+    toggleSidebar
   } = useBloodStore();
 
   // ── Forecast filter states ──
@@ -96,6 +98,7 @@ export default function IssuanceDashboard() {
   const [selectedHospitalId, setSelectedHospitalId] = useState('');
   const [queueFilter,        setQueueFilter]        = useState('all'); // 'all' | 'mine'
   const [successModal,       setSuccessModal]       = useState({ isOpen: false, title: '', message: '' });
+  const [drilldownHospital, setDrilldownHospital] = useState(null); // null = list view, object = detail view
 
   // Forecast Records table — independent filters
   const [recHospital, setRecHospital] = useState('ALL');
@@ -246,75 +249,111 @@ export default function IssuanceDashboard() {
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
 
       {/* SIDEBAR */}
-      <aside className="sidebar flex flex-col justify-between border-r border-slate-200 bg-white">
-        <div>
-          <div className="px-6 py-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
-              <div>
-                <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
-                <p className="text-slate-500 text-[10px] font-bold">{isHospitalUser ? 'Hospital Portal' : 'Issuance Portal'}</p>
+      <aside className={`sidebar flex flex-col justify-between border-r border-slate-200 bg-white ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
+        <div id="issuance-sidebar" className="sidebar-inner w-full flex flex-col justify-between">
+          <div>
+            {/* Logo Section */}
+            <div className={`py-5 border-b border-slate-100 ${isSidebarCollapsed ? 'px-3' : 'px-6'}`}>
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className={`flex items-center min-w-0 ${isSidebarCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
+                  <img src={bloodlinkLogo} alt="BloodLink" className="h-10 w-auto object-contain flex-shrink-0" />
+                  <div className="sidebar-brand-copy min-w-0">
+                    <p className="font-bold text-sm text-slate-900 tracking-tight leading-tight">BloodLink</p>
+                    <p className="text-slate-500 text-[10px] font-bold">{isHospitalUser ? 'Hospital Portal' : 'Issuance Portal'}</p>
+                  </div>
+                </div>
+                {!isSidebarCollapsed && (
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer flex-shrink-0"
+                    title="Collapse sidebar"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-            </div>
-          </div>
-
-          <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
-            <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-3 h-3 text-indigo-600" />
-              <p className="text-slate-800 font-bold text-xs">{role}</p>
-            </div>
-            {isHospitalUser && (
-              <p className="text-slate-500 text-[10px] font-medium mt-1 leading-tight">{hospitalName}</p>
-            )}
-            <p className="text-slate-400 text-[9px] font-medium mt-0.5">
-              {isHospitalUser ? `Facility ID: ${hospitalId}` : 'SNBC Issuance Center'}
-            </p>
-          </div>
-
-          <nav className="flex-1 py-2 overflow-y-auto">
-            <p className="text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">Main Modules</p>
-            <button onClick={() => setActiveTab('queue')}
-              className={`w-full text-left nav-link ${activeTab === 'queue' ? 'active' : ''}`}>
-              <FileText className="nav-icon" />
-              <span>{isHospitalUser ? 'My Requests' : 'Issuance Queue'}</span>
-              {pendingCount > 0 && (
-                <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{pendingCount}</span>
+              {isSidebarCollapsed && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-slate-100 text-slate-450 hover:text-slate-800 transition-colors focus:outline-none cursor-pointer"
+                    title="Expand sidebar"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
               )}
-            </button>
-            {isIssuanceStaff && (
-              <>
-                <button onClick={() => setActiveTab('inventory')}
-                  className={`w-full text-left nav-link ${activeTab === 'inventory' ? 'active' : ''}`}>
-                  <Database className="nav-icon" />
-                  <span>Inventory Check</span>
-                </button>
-                <button onClick={() => setActiveTab('issuance_details')}
-                  className={`w-full text-left nav-link ${activeTab === 'issuance_details' ? 'active' : ''}`}>
-                  <Activity className="nav-icon" />
-                  <span>Blood Issuance Details</span>
-                </button>
-                <button onClick={() => { setActiveTab('forecast'); if (!granularForecasts || granularForecasts.length === 0) generateGranularForecast(fcWeeks); }}
-                  className={`w-full text-left nav-link ${activeTab === 'forecast' ? 'active' : ''}`}>
-                  <TrendingUp className="nav-icon" />
-                  <span>Demand Forecast</span>
-                </button>
-              </>
-            )}
-          </nav>
-        </div>
+            </div>
 
-        {/* Logout at bottom */}
-        <div className="p-4 border-t border-slate-100">
-          <Link to="/" className="w-full inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
-            <LogOut className="w-4 h-4" />
-            <span>Exit Dashboard</span>
-          </Link>
+            {/* User Identity Panel */}
+            {!isSidebarCollapsed && (
+              <div className="mx-4 mt-4 mb-2 bg-slate-50 border border-slate-200/60 rounded-lg p-3">
+                <div className="sidebar-desk">
+                  <p className="text-slate-400 text-[9px] uppercase font-bold tracking-wider mb-0.5">Role Desk</p>
+                  <div className="flex items-center gap-1.5">
+                    <Shield className="w-3 h-3 text-indigo-600" />
+                    <p className="text-slate-800 font-bold text-xs">{role}</p>
+                  </div>
+                  {isHospitalUser && (
+                    <p className="text-slate-500 text-[10px] font-medium mt-1 leading-tight">{hospitalName}</p>
+                  )}
+                  <p className="text-slate-400 text-[9px] font-medium mt-0.5">
+                    {isHospitalUser ? `Facility ID: ${hospitalId}` : 'SNBC Issuance Center'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <nav className="flex-1 py-2 overflow-y-auto">
+              <p className="sidebar-section-label text-slate-400 text-[9px] font-bold uppercase px-4 mt-3 mb-1 tracking-widest">Main Modules</p>
+              <button onClick={() => setActiveTab('queue')}
+                className={`w-full text-left nav-link ${activeTab === 'queue' ? 'active' : ''}`}
+                title={isSidebarCollapsed ? (isHospitalUser ? 'My Requests' : 'Issuance Queue') : ""}>
+                <FileText className="nav-icon" />
+                <span className="sidebar-copy">{isHospitalUser ? 'My Requests' : 'Issuance Queue'}</span>
+                {pendingCount > 0 && (
+                  <span className="nav-badge ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{pendingCount}</span>
+                )}
+              </button>
+              {isIssuanceStaff && (
+                <>
+                  <button onClick={() => setActiveTab('inventory')}
+                    className={`w-full text-left nav-link ${activeTab === 'inventory' ? 'active' : ''}`}
+                    title={isSidebarCollapsed ? 'Inventory Check' : ""}>
+                    <Database className="nav-icon" />
+                    <span className="sidebar-copy">Inventory Check</span>
+                  </button>
+                  <button onClick={() => setActiveTab('issuance_details')}
+                    className={`w-full text-left nav-link ${activeTab === 'issuance_details' ? 'active' : ''}`}
+                    title={isSidebarCollapsed ? 'Blood Issuance Details' : ""}>
+                    <Activity className="nav-icon" />
+                    <span className="sidebar-copy">Blood Issuance Details</span>
+                  </button>
+                  <button onClick={() => { setActiveTab('forecast'); if (!granularForecasts || granularForecasts.length === 0) generateGranularForecast(fcWeeks); }}
+                    className={`w-full text-left nav-link ${activeTab === 'forecast' ? 'active' : ''}`}
+                    title={isSidebarCollapsed ? 'Demand Forecast' : ""}>
+                    <TrendingUp className="nav-icon" />
+                    <span className="sidebar-copy">Demand Forecast</span>
+                  </button>
+                </>
+              )}
+            </nav>
+          </div>
+
+          {/* Logout at bottom */}
+          <div className="p-4 border-t border-slate-100">
+            <Link to="/" className="w-full inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors" title="Exit Dashboard">
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              <span className="sidebar-copy">Exit Dashboard</span>
+            </Link>
+          </div>
         </div>
       </aside>
 
       {/* CONTENT AREA */}
-      <div className="content-area flex flex-col flex-1 h-screen bg-slate-50">
+      <div className={`content-area flex flex-col flex-1 h-screen bg-slate-50 ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
 
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8">
           <div>
@@ -328,7 +367,7 @@ export default function IssuanceDashboard() {
           <div className="flex items-center gap-3">
             {(isHospitalUser || isIssuanceStaff) && (
               <button onClick={openNewForm}
-                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
+                className="bg-[#C21C24] hover:bg-[#A8181F] text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer">
                 <Plus className="w-3.5 h-3.5" /> New Blood Request
               </button>
             )}
@@ -606,8 +645,6 @@ export default function IssuanceDashboard() {
           {isIssuanceStaff && activeTab === 'forecast' && (() => {
             const gf = Array.isArray(granularForecasts) ? granularForecasts : [];
             const isOverview = fcHospital === 'ALL' && fcBloodType === 'ALL' && fcComponent === 'ALL';
-
-            // ── OVERVIEW MODE: Aggregate all forecasts per week ──
             const allWeekLabels = [...new Set(gf.map(f => f.forecastWeekLabel))].sort();
             const overviewChartData = (() => {
               const sampleHistorical = gf[0]?.historicalWeeks || [];
@@ -622,7 +659,6 @@ export default function IssuanceDashboard() {
                 const total = Object.values(seen).reduce((a, b) => a + b, 0);
                 return { label: `Wk ${idx + 1}`, actual: total, predicted: null, upper: null, lower: null };
               });
-
               const predPart = allWeekLabels.map(wkLabel => {
                 const rows = gf.filter(f => f.forecastWeekLabel === wkLabel);
                 const totalPred = rows.reduce((s, f) => s + f.predictedDemand, 0);
@@ -630,17 +666,13 @@ export default function IssuanceDashboard() {
                 const totalLower = rows.reduce((s, f) => s + f.lowerBound, 0);
                 return { label: wkLabel, actual: null, predicted: totalPred, upper: totalUpper, lower: totalLower };
               });
-
               return [...histPart, ...predPart];
             })();
-
-            // ── FILTERED MODE: specific combo ──
             const filtered = gf.filter(f =>
-              (fcHospital  === 'ALL' || f.hospitalId  === fcHospital)  &&
+              (fcHospital === 'ALL' || f.hospitalId === fcHospital) &&
               (fcBloodType === 'ALL' || f.bloodTypeId === fcBloodType) &&
               (fcComponent === 'ALL' || f.componentId === fcComponent)
             );
-
             const filteredChartData = (() => {
               const sampleHistorical = filtered[0]?.historicalWeeks || [];
               const histPart = sampleHistorical.map((w, idx) => {
@@ -661,18 +693,17 @@ export default function IssuanceDashboard() {
                   label: wkLabel,
                   actual: null,
                   predicted: rows.reduce((s, f) => s + f.predictedDemand, 0),
-                  upper:     rows.reduce((s, f) => s + f.upperBound, 0),
-                  lower:     rows.reduce((s, f) => s + f.lowerBound, 0),
+                  upper: rows.reduce((s, f) => s + f.upperBound, 0),
+                  lower: rows.reduce((s, f) => s + f.lowerBound, 0),
                 };
               }).filter(Boolean);
               return [...histPart, ...predPart];
             })();
-
             const activeChartData = isOverview ? overviewChartData : filteredChartData;
 
-            // KPI calculations
+            // KPI cards
             const nextWkPredOverview = overviewChartData.find(d => d.predicted !== null);
-            const nextWkFiltered     = filteredChartData.find(d => d.predicted !== null);
+            const nextWkFiltered = filteredChartData.find(d => d.predicted !== null);
             const totalForecastedUnitsNextWk = isOverview
               ? (nextWkPredOverview?.predicted ?? 0)
               : (nextWkFiltered?.predicted ?? 0);
@@ -690,19 +721,36 @@ export default function IssuanceDashboard() {
               return rows.reduce((best, f) => f.predictedDemand > (best?.predictedDemand ?? 0) ? f : best, null);
             })();
 
+            const hasData = gf.length > 0;
+
             return (
-              <div className="space-y-6">
-                {/* Controls */}
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+              <div className="space-y-5 fade-in">
+
+                {/* Algorithm banner */}
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-5 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm mb-1">Multiple Linear Regression (MLR) Forecasting Engine</p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      Computed per <strong className="text-white">hospital × blood type × component</strong> using a multivariate OLS matrix solver.
+                      Algorithm: <span className="text-blue-300 font-mono text-[10px]">y_pred = b0 + b1 * week + b2 * hospScale + b3 * compWeight</span> mixed with MA4, with ±8% confidence bands.
+                      The <strong className="text-white">Overview</strong> chart shows the total system-wide demand the blood bank must prepare for.
+                      Use filters to drill down per hospital or blood type.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Controls row */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-[#C21C24]" /> MLR Demand Forecast
-                      </h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Forecast Controls</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
                         {isOverview
                           ? <span className="text-emerald-600 font-bold">📊 Overview Mode — Total demand across all hospitals, blood types, and components</span>
-                          : <span className="text-[#C21C24] font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
+                          : <span className="text-slate-700 font-bold">🔍 Filtered Mode — {fcHospital !== 'ALL' ? hospitals.find(h => h.id === fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · {fcBloodType !== 'ALL' ? fcBloodType : 'All Blood Types'} · {fcComponent !== 'ALL' ? fcComponent : 'All Components'}</span>
                         }
                       </p>
                     </div>
@@ -713,51 +761,48 @@ export default function IssuanceDashboard() {
                           ↩ Reset to Overview
                         </button>
                       )}
-                      <button
-                        onClick={() => generateGranularForecast(fcWeeks)}
-                        className="bg-[#C21C24] hover:bg-[#A8181F] text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm cursor-pointer"
-                      >
-                        <Activity className="w-3.5 h-3.5" /> Run Forecast
+                      <button onClick={() => generateGranularForecast(fcWeeks)}
+                        className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-sm cursor-pointer">
+                        <Activity className="w-3.5 h-3.5" /> Re-run Forecast
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Hospital</label>
                       <select value={fcHospital} onChange={e => setFcHospital(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Hospitals (Overview)</option>
-                        {(hospitals || []).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                        {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Blood Type</label>
                       <select value={fcBloodType} onChange={e => setFcBloodType(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Blood Types</option>
-                        {BLOOD_TYPE_LIST.map(bt => <option key={bt}>{bt}</option>)}
+                        {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Component</label>
                       <select value={fcComponent} onChange={e => setFcComponent(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
                         <option value="ALL">All Components</option>
-                        {COMP_LIST.map(c => <option key={c}>{c}</option>)}
+                        {COMPONENTS.map(c => <option key={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Weeks Ahead</label>
                       <select value={fcWeeks} onChange={e => setFcWeeks(Number(e.target.value))}
-                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#C21C24] outline-none bg-white">
-                        {[2,4,6,8].map(w => <option key={w} value={w}>{w} weeks</option>)}
+                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
+                        {[2, 4, 6, 8].map(w => <option key={w} value={w}>{w} weeks</option>)}
                       </select>
                     </div>
                   </div>
                 </div>
 
-                {/* Loading state */}
-                {!hasGFData && (
+                {!hasData && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center">
                     <div className="loading py-4 flex justify-center mb-3">
                       <svg width="64px" height="48px" viewBox="0 0 48 48">
@@ -766,25 +811,25 @@ export default function IssuanceDashboard() {
                       </svg>
                     </div>
                     <p className="font-bold text-slate-700 text-sm">Processing OLS Matrix Solver…</p>
-                    <p className="text-xs text-slate-400 mt-1">Click <strong>Run Forecast</strong> to generate MLR predictions.</p>
+                    <p className="text-xs text-slate-400 mt-1">Solving coefficients for the Multiple Linear Regression model.</p>
                   </div>
                 )}
 
-                {/* KPI cards & Chart */}
-                {hasGFData && (
+                {hasData && (
                   <>
+                    {/* KPI Cards */}
                     <div className="grid grid-cols-4 gap-4">
                       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
                           {isOverview ? 'Total Next-Week Demand' : 'Next-Week (Filtered)'}
                         </p>
-                        <p className="text-2xl font-extrabold text-[#C21C24] font-mono">{totalForecastedUnitsNextWk.toFixed(0)}</p>
+                        <p className="text-2xl font-extrabold text-slate-900 font-mono">{totalForecastedUnitsNextWk.toFixed(0)}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {isOverview ? 'units across all hospitals' : `units · ${fcBloodType} ${fcComponent}`}
                         </p>
                       </div>
                       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Avg Historical Demand</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">AVERAGE Historical Demand</p>
                         <p className="text-2xl font-extrabold text-emerald-600 font-mono">{totalHistActual}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {isOverview ? 'total units/week (8-wk avg)' : 'units/week (filtered avg)'}
@@ -809,23 +854,23 @@ export default function IssuanceDashboard() {
                       </div>
                     </div>
 
-                    {/* Chart Container */}
+                    {/* Main Chart */}
                     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <h3 className="font-bold text-slate-900 text-sm tracking-tight">
                             {isOverview
                               ? '📊 Overall System Demand Forecast (All Hospitals · All Blood Types · All Components)'
-                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h=>h.id===fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
+                              : `🔍 Filtered Demand Forecast — ${fcHospital !== 'ALL' ? hospitals.find(h => h.id === fcHospital)?.name?.split('(')[0].trim() : 'All Hospitals'} · ${fcBloodType !== 'ALL' ? fcBloodType : 'All Types'} · ${fcComponent !== 'ALL' ? fcComponent : 'All Components'}`
                             }
                           </h3>
                           <p className="text-xs text-slate-500 mt-0.5">
                             Wk 1–8 = historical actual issuances (aggregated) | Wk 9+ = REMA predictions with ±8% confidence band
                           </p>
                         </div>
-                        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-semibold flex-shrink-0 ml-4 font-sans">
+                        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-semibold flex-shrink-0 ml-4">
                           <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-emerald-500 inline-block rounded"></span>Actual</span>
-                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-[#C21C24] inline-block rounded"></span>Predicted</span>
+                          <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-indigo-500 inline-block rounded"></span>Predicted</span>
                           <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 bg-slate-300 inline-block rounded"></span>Confidence</span>
                         </div>
                       </div>
@@ -839,10 +884,10 @@ export default function IssuanceDashboard() {
                               contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                               formatter={(val, name) => [val ? `${val} units` : '—', name]}
                             />
-                            <Line type="monotone" dataKey="upper"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
-                            <Line type="monotone" dataKey="lower"     stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
-                            <Line type="monotone" dataKey="actual"    stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
-                            <Line type="monotone" dataKey="predicted" stroke="#C21C24" strokeWidth={3} name="REMA Prediction"    dot={{ r: 4, fill: '#C21C24' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
+                            <Line type="monotone" dataKey="upper" stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Upper Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="lower" stroke="#e2e8f0" strokeWidth={1.5} strokeDasharray="5 5" name="Lower Bound" dot={false} connectNulls />
+                            <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={3} name="Actual (Historical)" dot={{ r: 4, fill: '#10B981' }} connectNulls />
+                            <Line type="monotone" dataKey="predicted" stroke="#4F46E5" strokeWidth={3} name="REMA Prediction" dot={{ r: 4, fill: '#4F46E5' }} connectNulls strokeDasharray={isOverview ? undefined : "6 3"} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -851,184 +896,273 @@ export default function IssuanceDashboard() {
 
 
                     {/* Per Hospital Breakdown (Overview only) */}
-                    {isOverview && (() => {
-                      const getHospLogo = (name) => {
-                        const n = name.toLowerCase();
-                        if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
-                        if (n.includes('red cross') || n.includes('prc')) return prcLogo;
-                        if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
-                        return davaoLogo;
-                      };
-
-                      return (
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                          <div className="px-6 py-4 border-b border-slate-100">
-                            <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
-                          </div>
-                          <div className="divide-y divide-slate-100">
-                            {(hospitals || []).map(hosp => {
-                              const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
-                              const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
-                              const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
-                              const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
-                              const barW = allTotal ? (total / allTotal) * 100 : 0;
-                              const logoImg = getHospLogo(hosp.name);
-
-                              return (
-                                <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
-                                  className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
-                                  {/* Actual Hospital PNG Logo */}
-                                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs flex-shrink-0">
-                                    <img src={logoImg} alt={hosp.name} className="w-full h-full object-contain" />
-                                  </div>
-                                  <div className="w-44 flex-shrink-0">
-                                    <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-[#C21C24] transition">{hosp.name.split('(')[0].trim()}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                      <div className="h-full bg-[#C21C24] rounded-full transition-all" style={{ width: `${barW}%` }} />
-                                    </div>
-                                  </div>
-                                  <div className="w-20 text-right flex-shrink-0">
-                                    <span className="font-extrabold text-slate-900 font-mono text-sm">{total.toFixed(0)}</span>
-                                    <span className="text-[10px] text-slate-400 ml-1">units</span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                    {isOverview && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100">
+                          <h3 className="font-bold text-slate-900 text-sm tracking-tight">Next-Week Demand by Hospital</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Total predicted units each hospital will need — click to filter</p>
                         </div>
-                      );
-                    })()}
+                        <div className="divide-y divide-slate-100">
+                          {hospitals.map(hosp => {
+                            const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                            const total = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                            const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                            const pct = allTotal ? Math.round((total / allTotal) * 100) : 0;
+                            const barW = allTotal ? (total / allTotal) * 100 : 0;
+                            const logoImg = hospitals.find(h => h.id === hosp.id)?.name?.toLowerCase().includes('spmc') ? spmcLogo :
+                                            hospitals.find(h => h.id === hosp.id)?.name?.toLowerCase().includes('red cross') ? prcLogo :
+                                            hospitals.find(h => h.id === hosp.id)?.name?.toLowerCase().includes('san pedro') ? snbcLogo : davaoLogo;
+                            return (
+                              <button key={hosp.id} onClick={() => { setFcHospital(hosp.id); setRecHospital(hosp.id); }}
+                                className="w-full flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition text-left group cursor-pointer">
+                                {/* Actual Hospital PNG Logo */}
+                                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs flex-shrink-0">
+                                  <img src={logoImg} alt={hosp.name} className="w-full h-full object-contain" />
+                                </div>
+                                <div className="w-36 flex-shrink-0">
+                                  <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-650 transition">{hosp.name.split('(')[0].trim()}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${barW}%` }} />
+                                  </div>
+                                </div>
+                                <div className="w-20 text-right flex-shrink-0">
+                                  <span className="font-extrabold text-slate-900 font-mono text-sm">{total.toFixed(0)}</span>
+                                  <span className="text-[10px] text-slate-400 ml-1">units</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 w-10 text-right flex-shrink-0">{pct}%</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Forecast Records Table — with independent inline filters */}
-                    {(() => {
-                      const recFiltered = gf.filter(f =>
-                        f.weeksAhead === 1 &&
-                        (recHospital === 'ALL' || f.hospitalId === recHospital) &&
-                        (recBloodType === 'ALL' || f.bloodTypeId === recBloodType) &&
-                        (recComponent === 'ALL' || f.componentId === recComponent) &&
-                        (!recSearch || [
-                          f.forecastId,
-                          hospitals?.find(h => h.id === f.hospitalId)?.name || '',
-                          f.bloodTypeId,
-                          f.componentId
-                        ].some(v => v.toLowerCase().includes(recSearch.toLowerCase())))
-                      );
-                      const recIsFiltered = recHospital !== 'ALL' || recBloodType !== 'ALL' || recComponent !== 'ALL' || recSearch !== '';
-                      const displayRows = [...(recIsFiltered ? recFiltered : gf.filter(f => f.weeksAhead === 1))].sort((a, b) => b.predictedDemand - a.predictedDemand);
-                      return (
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                          {/* Table header + inline filters */}
-                          <div className="px-6 py-4 border-b border-slate-100">
-                            <div className="flex items-center justify-between mb-3">
+                    {/* ─── GRANULAR COMPONENT BREAKDOWN: Hospital List → Drilldown ─── */}
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+
+                      {/* ── LIST VIEW (no hospital selected) ── */}
+                      {!drilldownHospital && (() => {
+                        const getHospLogo = (name) => {
+                          const n = name.toLowerCase();
+                          if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
+                          if (n.includes('red cross') || n.includes('prc')) return prcLogo;
+                          if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
+                          return davaoLogo;
+                        };
+
+                        return (
+                          <>
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                               <div>
                                 <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                                  Granular Component Breakdown (Next Week) {recIsFiltered && <span className="text-slate-650">(Filtered)</span>}
+                                  Granular Component Breakdown — Next Week
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                  {recIsFiltered
-                                    ? `${displayRows.length} component record${displayRows.length !== 1 ? 's' : ''} matching filter — per blood type & component`
-                                    : `${displayRows.length} records · Breaks down the summary charts above into exact PRBC, FFP, Platelet & Cryo units per hospital`
-                                  }
+                                  Select a hospital to view its full demand breakdown by blood type &amp; component
                                 </p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {recIsFiltered && (
+                              <span className="text-[10px] text-slate-400 font-mono bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                                {hospitals.length} hospitals registered
+                              </span>
+                            </div>
+
+                            <div className="divide-y divide-slate-100">
+                              {hospitals.map((hosp, idx) => {
+                                const rows = gf.filter(f => f.hospitalId === hosp.id && f.weeksAhead === 1);
+                                const totalBags = rows.reduce((s, f) => s + f.predictedDemand, 0);
+                                const allTotal = gf.filter(f => f.weeksAhead === 1).reduce((s, f) => s + f.predictedDemand, 0);
+                                const pct = allTotal ? Math.round((totalBags / allTotal) * 100) : 0;
+                                const barW = allTotal ? (totalBags / allTotal) * 100 : 0;
+                                const highestComp = rows.length ? rows.reduce((a, b) => b.predictedDemand > a.predictedDemand ? b : a, rows[0]) : null;
+                                const isRising = rows.some(f => f.slope > 0);
+                                const isFalling = rows.every(f => f.slope < 0);
+                                const logoImg = getHospLogo(hosp.name);
+
+                                return (
                                   <button
-                                    onClick={() => { setRecHospital('ALL'); setRecBloodType('ALL'); setRecComponent('ALL'); setRecSearch(''); }}
-                                    className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition"
-                                  >↩ Clear</button>
-                                )}
-                                <span className="text-[10px] text-slate-400 font-mono">demand_forecast table</span>
-                              </div>
-                            </div>
-                            {/* Inline filter row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hospital</label>
-                                <select value={recHospital} onChange={e => setRecHospital(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Hospitals</option>
-                                  {(hospitals || []).map(h => <option key={h.id} value={h.id}>{h.name.split('(')[0].trim()}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Blood Type</label>
-                                <select value={recBloodType} onChange={e => setRecBloodType(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Blood Types</option>
-                                  {BLOOD_TYPES.map(bt => <option key={bt}>{bt}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Component</label>
-                                <select value={recComponent} onChange={e => setRecComponent(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none bg-white">
-                                  <option value="ALL">All Components</option>
-                                  {COMPONENTS.map(c => <option key={c}>{c}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search</label>
-                                <input
-                                  type="text"
-                                  value={recSearch}
-                                  onChange={e => setRecSearch(e.target.value)}
-                                  placeholder="ID, hospital, type…"
-                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-900 outline-none"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full text-xs">
-                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                <tr>
-                                  <th className="px-5 py-3 text-left">Forecast ID</th>
-                                  {recHospital === 'ALL' && <th className="px-5 py-3 text-left">Hospital</th>}
-                                  <th className="px-5 py-3 text-left">Blood Type</th>
-                                  <th className="px-5 py-3 text-left">Component</th>
-                                  <th className="px-5 py-3 text-right">Predicted Demand (Next Week)</th>
-                                  <th className="px-5 py-3 text-center">Confidence</th>
-                                  <th className="px-5 py-3 text-center">Trend</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                                {displayRows.length === 0 ? (
-                                  <tr><td colSpan={recHospital === 'ALL' ? 7 : 6} className="px-6 py-10 text-center text-slate-400 text-xs">No records match the selected filters.</td></tr>
-                                ) : displayRows.map(f => (
-                                  <tr key={f.forecastId} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-5 py-2.5 font-mono text-slate-400 text-[10px]">{f.forecastId}</td>
-                                    {recHospital === 'ALL' && <td className="px-5 py-2.5 text-slate-800 font-bold">{(hospitals || []).find(h => h.id === f.hospitalId)?.name?.split('(')[0].trim() || f.hospitalName}</td>}
-                                    <td className="px-5 py-2.5">
-                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] border border-slate-200 font-mono">{f.bloodTypeId}</span>
-                                    </td>
-                                    <td className="px-5 py-2.5">
-                                      <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded text-[9px] font-bold">{f.componentId}</span>
-                                    </td>
-                                    <td className="px-5 py-2.5 text-right font-mono font-bold text-slate-900">
-                                      <span className="text-base font-black text-indigo-600 font-mono">{f.predictedDemand.toFixed(1)}</span>
+                                    key={hosp.id}
+                                    onClick={() => setDrilldownHospital(hosp)}
+                                    className="w-full flex items-center gap-4 px-6 py-4 hover:bg-indigo-50/40 transition text-left group cursor-pointer"
+                                  >
+                                    {/* Rank badge */}
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-black text-slate-500 flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition">
+                                      {idx + 1}
+                                    </div>
+
+                                    {/* Hospital Actual Logo PNG */}
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs flex-shrink-0">
+                                      <img src={logoImg} alt={hosp.name} className="w-full h-full object-contain" />
+                                    </div>
+
+                                    {/* Name + ID */}
+                                    <div className="w-48 flex-shrink-0">
+                                      <p className="font-bold text-slate-800 text-xs leading-tight group-hover:text-indigo-700 transition truncate">{hosp.name.split('(')[0].trim()}</p>
+                                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{hosp.id}</p>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div className="flex-1">
+                                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-indigo-500 rounded-full transition-all group-hover:bg-indigo-600" style={{ width: `${barW}%` }} />
+                                      </div>
+                                      {highestComp && (
+                                        <p className="text-[9px] text-slate-400 mt-1">
+                                          Top demand: <span className="font-bold text-slate-600">{highestComp.bloodTypeId} {highestComp.componentId}</span>
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {/* Trend */}
+                                    <div className="flex-shrink-0">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                        isRising ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                        isFalling ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                        'bg-slate-50 border-slate-200 text-slate-500'
+                                      }`}>
+                                        {isRising ? '↑ Rising' : isFalling ? '↓ Falling' : '→ Stable'}
+                                      </span>
+                                    </div>
+
+                                    {/* Bag count */}
+                                    <div className="w-24 text-right flex-shrink-0">
+                                      <span className="font-black text-indigo-600 font-mono text-base">{totalBags.toFixed(0)}</span>
                                       <span className="text-[10px] text-slate-400 ml-1">bags</span>
-                                    </td>
-                                    <td className="px-5 py-2.5 text-center text-slate-400 text-[10px]">{f.lowerBound.toFixed(0)}–{f.upperBound.toFixed(0)}</td>
-                                    <td className="px-5 py-2.5 text-center">
-                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                          f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                      <p className="text-[9px] text-slate-400">{pct}% of total</p>
+                                    </div>
+
+                                    {/* Arrow */}
+                                    <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      {/* ── DRILLDOWN VIEW (hospital selected) ── */}
+                      {drilldownHospital && (() => {
+                        const hospRows = gf.filter(f => f.hospitalId === drilldownHospital.id && f.weeksAhead === 1);
+                        const totalBags = hospRows.reduce((s, f) => s + f.predictedDemand, 0);
+                        const byType = BLOOD_TYPES.map(bt => {
+                          const typeRows = hospRows.filter(f => f.bloodTypeId === bt);
+                          return { bt, total: typeRows.reduce((s, f) => s + f.predictedDemand, 0), rows: typeRows };
+                        }).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+
+                        const getHospLogo = (name) => {
+                          const n = name.toLowerCase();
+                          if (n.includes('spmc') || n.includes('southern philippines')) return spmcLogo;
+                          if (n.includes('red cross') || n.includes('prc')) return prcLogo;
+                          if (n.includes('san pedro') || n.includes('snbc') || n.includes('sub-national')) return snbcLogo;
+                          return davaoLogo;
+                        };
+                        const logoImg = getHospLogo(drilldownHospital.name);
+
+                        return (
+                          <>
+                            {/* Drilldown header */}
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-white">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => setDrilldownHospital(null)}
+                                  className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition shadow-sm cursor-pointer"
+                                >
+                                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Actual Hospital PNG Logo */}
+                                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-sm flex-shrink-0">
+                                  <img src={logoImg} alt={drilldownHospital.name} className="w-full h-full object-contain" />
+                                </div>
+
+                                <div>
+                                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Hospital Demand Drilldown</p>
+                                  <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2">
+                                    {drilldownHospital.name.split('(')[0].trim()}
+                                  </h3>
+                                  <p className="text-[10px] text-slate-400 font-mono">{drilldownHospital.id} · {drilldownHospital.type}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-2xl font-black text-indigo-600 font-mono">{totalBags.toFixed(0)}</p>
+                                <p className="text-[10px] text-slate-400">total bags next week</p>
+                              </div>
+                            </div>
+
+                            {/* KPI strip */}
+                            <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
+                              {[
+                                { label: 'Blood Types', value: byType.length },
+                                { label: 'Components', value: [...new Set(hospRows.map(f => f.componentId))].length },
+                                { label: 'Highest Demand', value: hospRows.length ? hospRows.reduce((a,b) => b.predictedDemand > a.predictedDemand ? b : a, hospRows[0]) : null, render: v => v ? `${v.bloodTypeId} ${v.componentId}` : '—' },
+                                { label: 'Rising Trends', value: hospRows.filter(f => f.slope > 0).length }
+                              ].map((kpi, i) => (
+                                <div key={i} className="px-5 py-3 text-center">
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{kpi.label}</p>
+                                  <p className="font-extrabold text-slate-800 text-base font-mono mt-0.5">
+                                    {kpi.render ? kpi.render(kpi.value) : kpi.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Per Blood Type breakdown */}
+                            <div className="p-5 space-y-4">
+                              {byType.map(({ bt, total, rows: typeRows }) => {
+                                const allTotal = totalBags || 1;
+                                return (
+                                  <div key={bt} className="border border-slate-100 rounded-xl overflow-hidden">
+                                    {/* Blood type header row */}
+                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                                      <span className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 font-black text-[11px] flex items-center justify-center font-mono shadow-sm">{bt}</span>
+                                      <div className="flex-1">
+                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(total / allTotal) * 100}%` }} />
+                                        </div>
+                                      </div>
+                                      <span className="font-black text-indigo-600 font-mono text-sm">{total.toFixed(0)}</span>
+                                      <span className="text-[10px] text-slate-400">bags</span>
+                                      <span className="text-[10px] text-slate-400 w-8 text-right">{Math.round((total / allTotal) * 100)}%</span>
+                                    </div>
+                                    {/* Component rows */}
+                                    <div className="divide-y divide-slate-50">
+                                      {typeRows.sort((a, b) => b.predictedDemand - a.predictedDemand).map(f => (
+                                        <div key={f.forecastId} className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-50/70 transition">
+                                          <span className="text-[10px] font-mono text-slate-400 w-28">{f.forecastId}</span>
+                                          <span className="bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-0.5 rounded text-[10px] font-bold">{f.componentId}</span>
+                                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-400 rounded-full" style={{ width: `${total ? (f.predictedDemand / total) * 100 : 0}%` }} />
+                                          </div>
+                                          <span className="font-extrabold text-slate-800 font-mono text-sm w-8 text-right">{f.predictedDemand.toFixed(0)}</span>
+                                          <span className="text-[9px] text-slate-400 w-16 text-right">±{f.lowerBound.toFixed(0)}–{f.upperBound.toFixed(0)}</span>
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-16 text-center ${
+                                            f.slope > 0 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                            f.slope < 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                                             'bg-slate-50 border-slate-200 text-slate-500'
-                                        }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                                          }`}>{f.slope > 0 ? '↑ Rising' : f.slope < 0 ? '↓ Falling' : '→ Stable'}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {byType.length === 0 && (
+                                <div className="text-center py-10 text-slate-400 text-xs">
+                                  No forecast data available for this hospital.
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </>
                 )}
               </div>
@@ -1126,7 +1260,7 @@ export default function IssuanceDashboard() {
                       <p className="text-[11px] text-[#C21C24] mt-2 font-semibold">{cartError}</p>
                     )}
                     <button type="button" onClick={handleAddToCart}
-                      className="mt-3 w-full py-2 text-xs font-bold text-[#C21C24] border border-[#C21C24] hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                      className="mt-3 w-full py-2 text-xs font-bold text-[#C21C24] border border-[#C21C24] hover:bg-rose-50 rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer">
                       <Plus className="w-3.5 h-3.5" /> Add to Requisition
                     </button>
                   </div>
@@ -1260,7 +1394,7 @@ export default function IssuanceDashboard() {
                   </button>
                   <button type="submit"
                     disabled={cartItems.length === 0}
-                    className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg transition-colors shadow-sm flex items-center gap-2 cursor-pointer">
+                    className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-full transition-colors shadow-sm flex items-center gap-2 cursor-pointer">
                     <FileText className="w-3.5 h-3.5" /> Submit Request
                   </button>
                 </div>

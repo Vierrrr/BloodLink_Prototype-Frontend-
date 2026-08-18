@@ -2,70 +2,70 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 const initialDonors = [
-  // ── Sample Dataset: Donor Registration ──
-  { 
-    id: 'D001', name: 'Juan P. Dela Cruz', sex: 'Male', civilStatus: 'Single', dob: '1998-05-12', 
-    bloodType: 'O+', address: 'Buhangin, Davao City', donationDate: '2026-03-10', status: 'Regular', 
-    lastDonation: '2026-03-10', remarks: 'Eligible', phone: '+63 917 111 1111', distance: '1.2 km', totalDonations: 4 
+  // ── Sample Dataset: Donor Registrationssss ──
+  {
+    id: 'D001', name: 'Juan P. Dela Cruz', sex: 'Male', civilStatus: 'Single', dob: '1998-05-12',
+    bloodType: 'O+', address: 'Buhangin, Davao City', donationDate: '2026-03-10', status: 'Regular',
+    lastDonation: '2026-03-10', remarks: 'Eligible', phone: '+63 917 111 1111', distance: '1.2 km', totalDonations: 4
   },
-  { 
-    id: 'D002', name: 'Maria A. Santos', sex: 'Female', civilStatus: 'Married', dob: '1992-09-08', 
-    bloodType: 'A+', address: 'Matina, Davao City', donationDate: '2026-06-15', status: 'New', 
-    lastDonation: '2026-06-15', remarks: 'Eligible', phone: '+63 917 222 2222', distance: '3.4 km', totalDonations: 1 
+  {
+    id: 'D002', name: 'Maria A. Santos', sex: 'Female', civilStatus: 'Married', dob: '1992-09-08',
+    bloodType: 'A+', address: 'Matina, Davao City', donationDate: '2026-06-15', status: 'New',
+    lastDonation: '2026-06-15', remarks: 'Eligible', phone: '+63 917 222 2222', distance: '3.4 km', totalDonations: 1
   },
-  { 
-    id: 'D003', name: 'Robert L. Tan', sex: 'Male', civilStatus: 'Single', dob: '1988-12-04', 
-    bloodType: 'B-', address: 'Talomo, Davao City', donationDate: '2026-05-20', status: 'Regular', 
-    lastDonation: '2026-05-20', remarks: 'Eligible', phone: '+63 917 333 3333', distance: '5.1 km', totalDonations: 2 
+  {
+    id: 'D003', name: 'Robert L. Tan', sex: 'Male', civilStatus: 'Single', dob: '1988-12-04',
+    bloodType: 'B-', address: 'Talomo, Davao City', donationDate: '2026-05-20', status: 'Regular',
+    lastDonation: '2026-05-20', remarks: 'Eligible', phone: '+63 917 333 3333', distance: '5.1 km', totalDonations: 2
   },
-  { 
-    id: 'D004', name: 'Sarah G. Cruz', sex: 'Female', civilStatus: 'Single', dob: '2000-03-16', 
-    bloodType: 'AB+', address: 'Mintal, Davao City', donationDate: '2026-04-05', status: 'Regular', 
-    lastDonation: '2026-04-05', remarks: 'Eligible', phone: '+63 917 444 4444', distance: '8.2 km', totalDonations: 5 
+  {
+    id: 'D004', name: 'Sarah G. Cruz', sex: 'Female', civilStatus: 'Single', dob: '2000-03-16',
+    bloodType: 'AB+', address: 'Mintal, Davao City', donationDate: '2026-04-05', status: 'Regular',
+    lastDonation: '2026-04-05', remarks: 'Eligible', phone: '+63 917 444 4444', distance: '8.2 km', totalDonations: 5
   },
-  { 
-    id: 'D005', name: 'Joseph M. Castro', sex: 'Male', civilStatus: 'Single', dob: '1995-07-22', 
-    bloodType: 'O-', address: 'Agdao, Davao City', donationDate: '2026-01-15', status: 'Regular', 
-    lastDonation: '2026-01-15', remarks: 'Eligible', phone: '+63 917 888 8888', distance: '2.5 km', totalDonations: 8 
+  {
+    id: 'D005', name: 'Joseph M. Castro', sex: 'Male', civilStatus: 'Single', dob: '1995-07-22',
+    bloodType: 'O-', address: 'Agdao, Davao City', donationDate: '2026-01-15', status: 'Regular',
+    lastDonation: '2026-01-15', remarks: 'Eligible', phone: '+63 917 888 8888', distance: '2.5 km', totalDonations: 8
   },
-  { 
-    id: 'D006', name: 'Elena F. Diaz', sex: 'Female', civilStatus: 'Married', dob: '1990-11-30', 
-    bloodType: 'A-', address: 'Lanang, Davao City', donationDate: '2026-06-25', status: 'Regular', 
-    lastDonation: '2026-06-25', remarks: 'Eligible', phone: '+63 917 999 9999', distance: '4.1 km', totalDonations: 3 
+  {
+    id: 'D006', name: 'Elena F. Diaz', sex: 'Female', civilStatus: 'Married', dob: '1990-11-30',
+    bloodType: 'A-', address: 'Lanang, Davao City', donationDate: '2026-06-25', status: 'Regular',
+    lastDonation: '2026-06-25', remarks: 'Eligible', phone: '+63 917 999 9999', distance: '4.1 km', totalDonations: 3
   },
-  { 
-    id: 'D007', name: 'Mark Anthony V. Reyes', sex: 'Male', civilStatus: 'Single', dob: '1993-02-14', 
-    bloodType: 'B-', address: 'Toril, Davao City', donationDate: '2026-02-28', status: 'Regular', 
-    lastDonation: '2026-02-28', remarks: 'Eligible', phone: '+63 917 777 7777', distance: '12.4 km', totalDonations: 4 
+  {
+    id: 'D007', name: 'Mark Anthony V. Reyes', sex: 'Male', civilStatus: 'Single', dob: '1993-02-14',
+    bloodType: 'B-', address: 'Toril, Davao City', donationDate: '2026-02-28', status: 'Regular',
+    lastDonation: '2026-02-28', remarks: 'Eligible', phone: '+63 917 777 7777', distance: '12.4 km', totalDonations: 4
   },
-  { 
-    id: 'D008', name: 'Patricia J. Gomez', sex: 'Female', civilStatus: 'Single', dob: '1997-08-19', 
-    bloodType: 'O-', address: 'Cabantian, Davao City', donationDate: '2026-05-01', status: 'Regular', 
-    lastDonation: '2026-05-01', remarks: 'Eligible', phone: '+63 917 654 3210', distance: '6.7 km', totalDonations: 2 
+  {
+    id: 'D008', name: 'Patricia J. Gomez', sex: 'Female', civilStatus: 'Single', dob: '1997-08-19',
+    bloodType: 'O-', address: 'Cabantian, Davao City', donationDate: '2026-05-01', status: 'Regular',
+    lastDonation: '2026-05-01', remarks: 'Eligible', phone: '+63 917 654 3210', distance: '6.7 km', totalDonations: 2
   },
-  // ── Sample Dataset: Deferred Donors ──
-  { 
-    id: 'D014', name: 'Miguel S. Alcantara', sex: 'Male', 
-    bloodType: 'O+', address: 'Davao City', donationDate: '2026-02-05', status: 'Deferred', 
-    lastDonation: '2026-02-05', remarks: 'Low Hemoglobin (Temporary)', phone: '+63 917 555 5555', distance: '2.0 km', totalDonations: 3 
+  // ── Sample Dataset: Deferred Donorsssss ──
+  {
+    id: 'D014', name: 'Miguel S. Alcantara', sex: 'Male',
+    bloodType: 'O+', address: 'Davao City', donationDate: '2026-02-05', status: 'Deferred',
+    lastDonation: '2026-02-05', remarks: 'Low Hemoglobin (Temporary)', phone: '+63 917 555 5555', distance: '2.0 km', totalDonations: 3
   },
-  { 
-    id: 'D022', name: 'Clarisse D. Villamin', sex: 'Female', 
-    bloodType: 'A-', address: 'Davao City', donationDate: '2026-02-10', status: 'Deferred', 
-    lastDonation: '2026-02-10', remarks: 'Recent Tattoo (Temporary)', phone: '+63 917 666 6666', distance: '4.5 km', totalDonations: 1 
+  {
+    id: 'D022', name: 'Clarisse D. Villamin', sex: 'Female',
+    bloodType: 'A-', address: 'Davao City', donationDate: '2026-02-10', status: 'Deferred',
+    lastDonation: '2026-02-10', remarks: 'Recent Tattoo (Temporary)', phone: '+63 917 666 6666', distance: '4.5 km', totalDonations: 1
   }
 ];
 
 const initialInventory = [
-  // ── Sample Dataset: Blood Components ──
+  // ── Sample Dataset: Blood Componentss ──
   { type: 'O+', units: 25, platelets: 180, ffp: 293, cryo: 113, cryosup: 51, threshold: 15, status: 'safe' },
-  { type: 'A+', units: 9,  platelets: 64,  ffp: 160, cryo: 85,  cryosup: 31, threshold: 10, status: 'low' },
-  { type: 'B+', units: 9,  platelets: 52,  ffp: 140, cryo: 42,  cryosup: 20, threshold: 10, status: 'low' },
-  { type: 'AB+', units: 4, platelets: 25,  ffp: 40,  cryo: 8,   cryosup: 4,  threshold: 5,  status: 'critical' },
-  { type: 'O-', units: 4,  platelets: 15,  ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 5,  status: 'critical' },
-  { type: 'A-', units: 2,  platelets: 10,  ffp: 0,   cryo: 1,   cryosup: 0,  threshold: 3,  status: 'critical' },
-  { type: 'B-', units: 1,  platelets: 8,   ffp: 1,   cryo: 0,   cryosup: 0,  threshold: 3,  status: 'critical' },
-  { type: 'AB-', units: 1, platelets: 5,   ffp: 0,   cryo: 0,   cryosup: 0,  threshold: 2,  status: 'critical' }
+  { type: 'A+', units: 9, platelets: 64, ffp: 160, cryo: 85, cryosup: 31, threshold: 10, status: 'low' },
+  { type: 'B+', units: 9, platelets: 52, ffp: 140, cryo: 42, cryosup: 20, threshold: 10, status: 'low' },
+  { type: 'AB+', units: 4, platelets: 25, ffp: 40, cryo: 8, cryosup: 4, threshold: 5, status: 'critical' },
+  { type: 'O-', units: 4, platelets: 15, ffp: 0, cryo: 0, cryosup: 0, threshold: 5, status: 'critical' },
+  { type: 'A-', units: 2, platelets: 10, ffp: 0, cryo: 1, cryosup: 0, threshold: 3, status: 'critical' },
+  { type: 'B-', units: 1, platelets: 8, ffp: 1, cryo: 0, cryosup: 0, threshold: 3, status: 'critical' },
+  { type: 'AB-', units: 1, platelets: 5, ffp: 0, cryo: 0, cryosup: 0, threshold: 2, status: 'critical' }
 ];
 
 const initialRequests = [
@@ -522,6 +522,8 @@ export const useBloodStore = create(
       forecastData: initialForecastData,
       granularForecasts: [], // Seeded by generateGranularForecast on first call
       distributionLog: initialDistributionLog,
+      isSidebarCollapsed: false,
+      toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
       smsLogs: [
         {
           smsId: 'SMS-001',
@@ -830,12 +832,12 @@ export const useBloodStore = create(
             if (!inv) return;
             COMPONENTS.forEach(comp => {
               const rarityFactor = RARITY[bt] || 0.5;
-              const compFactor   = COMP_W[comp] || 0.5;
-              const hospFactor   = HOSP_S[hosp.type] || 1.0;
-              const baseDemand   = Math.round(8 * rarityFactor * compFactor * hospFactor);
+              const compFactor = COMP_W[comp] || 0.5;
+              const hospFactor = HOSP_S[hosp.type] || 1.0;
+              const baseDemand = Math.round(8 * rarityFactor * compFactor * hospFactor);
               if (baseDemand === 0) return;
 
-              const hospScale  = HOSP_S[hosp.type] || 1.0;
+              const hospScale = HOSP_S[hosp.type] || 1.0;
               const compWeight = COMP_W[comp] || 0.5;
 
               const historicalWeeks = [];
@@ -870,11 +872,11 @@ export const useBloodStore = create(
         // ── Step 3: Solve global MLR: beta = (X^T X)^-1 X^T Y ──────────────
         let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
         try {
-          const XT     = matTranspose(globalX);
-          const XTX    = matMultiply(XT, globalX);
+          const XT = matTranspose(globalX);
+          const XTX = matMultiply(XT, globalX);
           const XTXinv = matInvert(XTX);
-          const XTY    = matMultiply(XT, globalY);
-          const beta   = matMultiply(XTXinv, XTY);
+          const XTY = matMultiply(XT, globalY);
+          const beta = matMultiply(XTXinv, XTY);
           b0 = isFinite(beta[0][0]) ? beta[0][0] : 0;
           b1 = isFinite(beta[1][0]) ? beta[1][0] : 0;
           b2 = isFinite(beta[2][0]) ? beta[2][0] : 0;
@@ -897,28 +899,28 @@ export const useBloodStore = create(
             weekDate.setDate(weekDate.getDate() + (8 + i - 1) * 7);
 
             // MLR prediction: y = b0 + b1*weekIdx + b2*hospScale + b3*compWeight
-            const weekIdx    = 8 + i - 1;
-            const mlrPred    = b0 + b1 * weekIdx + b2 * hospScale + b3 * compWeight;
+            const weekIdx = 8 + i - 1;
+            const mlrPred = b0 + b1 * weekIdx + b2 * hospScale + b3 * compWeight;
             // Blend MLR (70%) with MA4 (30%) for stability
-            const predicted  = Math.max(0, Math.round(0.7 * mlrPred + 0.3 * maLast));
-            const margin     = Math.max(1, Math.round(predicted * 0.08));
+            const predicted = Math.max(0, Math.round(0.7 * mlrPred + 0.3 * maLast));
+            const margin = Math.max(1, Math.round(predicted * 0.08));
 
             results.push({
-              forecastId:       forecastIdSeq++,
-              hospitalId:       hosp.id,
-              hospitalName:     hosp.name,
-              bloodTypeId:      bt,
-              componentId:      comp,
-              forecastWeek:     weekDate.toISOString().slice(0, 10),
+              forecastId: forecastIdSeq++,
+              hospitalId: hosp.id,
+              hospitalName: hosp.name,
+              bloodTypeId: bt,
+              componentId: comp,
+              forecastWeek: weekDate.toISOString().slice(0, 10),
               forecastWeekLabel: `Wk ${8 + i}`,
-              predictedDemand:  predicted,
-              upperBound:       predicted + margin,
-              lowerBound:       Math.max(0, predicted - margin),
-              generatedAt:      new Date().toISOString(),
+              predictedDemand: predicted,
+              upperBound: predicted + margin,
+              lowerBound: Math.max(0, predicted - margin),
+              generatedAt: new Date().toISOString(),
               historicalWeeks,
-              mlrCoefficients:  { b0: +b0.toFixed(3), b1: +b1.toFixed(3), b2: +b2.toFixed(3), b3: +b3.toFixed(3) },
-              maLast:           +maLast.toFixed(1),
-              weeksAhead:       i,
+              mlrCoefficients: { b0: +b0.toFixed(3), b1: +b1.toFixed(3), b2: +b2.toFixed(3), b3: +b3.toFixed(3) },
+              maLast: +maLast.toFixed(1),
+              weeksAhead: i,
             });
           }
         });
@@ -951,7 +953,7 @@ export const useBloodStore = create(
         set((state) => {
           const donationId = 'DON-' + Math.floor(100 + Math.random() * 900);
           const testId = 'LAB-' + Math.floor(100 + Math.random() * 900);
-          
+
           const newDonation = {
             donationId,
             donorId: id,
@@ -1023,9 +1025,9 @@ export const useBloodStore = create(
           const donation = state.donations.find(d => d.donationId === labForm.donationId);
           let updatedDonors = state.donors;
           if (donation) {
-            updatedDonors = state.donors.map(d => 
-              d.id === donation.donorId 
-                ? { ...d, bloodType: labForm.bloodTypeConfirmed } 
+            updatedDonors = state.donors.map(d =>
+              d.id === donation.donorId
+                ? { ...d, bloodType: labForm.bloodTypeConfirmed }
                 : d
             );
           }
@@ -1072,7 +1074,7 @@ export const useBloodStore = create(
               finalContactNumber = targetHosp.phone || finalContactNumber;
 
               // Automatically mark the affiliated hospital as Active
-              updatedHospitals = state.hospitals.map(h => 
+              updatedHospitals = state.hospitals.map(h =>
                 h.id === userForm.hospitalId ? { ...h, registrationStatus: 'Active' } : h
               );
             }
@@ -1222,12 +1224,12 @@ export const useBloodStore = create(
         set((state) => {
           const req = state.bloodRequests.find(r => r.refNo === refNo);
           if (!req) return state;
-          
+
           const items = req.items && req.items.length > 0
             ? req.items
             : (req.patientBloodType
-                ? [{ bloodType: req.patientBloodType, component: req.component || 'PRBC', units: req.units || 1 }]
-                : []);
+              ? [{ bloodType: req.patientBloodType, component: req.component || 'PRBC', units: req.units || 1 }]
+              : []);
 
           let updatedBloodInventory = [...state.bloodInventory];
           let totalIssuedCount = 0;
@@ -1369,7 +1371,7 @@ export const useBloodStore = create(
       approveRecommendation: (recId) => {
         set((state) => {
           const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Approved', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toLocaleString() } : r);
-          
+
           const targetRec = state.recommendations.find(r => r.recommendationId === recId);
           let newInventory = state.inventory;
           if (targetRec) {
@@ -1416,7 +1418,7 @@ export const useBloodStore = create(
       rejectRecommendation: (recId) => {
         set((state) => {
           const updatedRecs = state.recommendations.map(r => r.recommendationId === recId ? { ...r, status: 'Rejected', approvedBy: state.authSystemUser?.id || 'USR-002', actedAt: new Date().toISOString().slice(0, 19) } : r);
-          
+
           const auditLogId = 'LOG-' + Math.floor(100 + Math.random() * 900);
           const newAuditLog = {
             logId: auditLogId,
@@ -1586,7 +1588,7 @@ export const useBloodStore = create(
         set({ mobilizeFlowStep: 0, scanProgress: 0, scannedCount: 0, matchedCount: 0, criteriaChecked: 0, totalConfirmed: 12, currentPhase: 1, smsLogs: [] });
       }
     }),
-    { 
+    {
       name: 'bloodlink-dvo-store',
       version: 10,
       migrate: () => {
